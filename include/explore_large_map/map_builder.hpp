@@ -5,6 +5,8 @@
 #ifndef EXPLORE_LARGE_MAP_MAP_BUILDER_HPP
 #define EXPLORE_LARGE_MAP_MAP_BUILDER_HPP
 
+#include <chrono>
+
 #include "Eigen/Core"
 #include "Eigen/Dense"
 #include "Eigen/Geometry"
@@ -60,7 +62,6 @@ namespace explore_global_map {
         roll = pitch;
         pitch = temp;
         tf::Quaternion q_new = tf::createQuaternionFromRPY(roll, pitch, yaw);
-        ROS_INFO_STREAM(q_new);  // Print the quaternion components
         geometry_msgs::Quaternion msg;
         tf::quaternionTFToMsg(q_new, msg);
         return msg;
@@ -78,7 +79,7 @@ namespace explore_global_map {
 
     private:
 
-        iv_slam_ros_msgs::TraversibleArea tailorSubmap(const iv_slam_ros_msgs::TraversibleArea &traver_map);
+        void tailorSubmap(const iv_slam_ros_msgs::TraversibleArea &traver_map, iv_slam_ros_msgs::TraversibleArea &tailored_submap);
 
         void broadcastTransformBetweenVehicleAndOdom();
 
