@@ -56,6 +56,17 @@ target_link_libraries(${PROJECT_NAME}_node
    ${OpenCV_LIBRARIES}
  )
 
+add_executable(local_map_node src/local_map_node.cpp
+        src/map_builder.cpp
+        src/rigid_transform.cc
+        src/transform.cc)
+
+target_link_libraries(local_map_node
+        ${catkin_LIBRARIES}
+        ${EIGEN3_LIBRARIES}
+        ${OpenCV_LIBRARIES}
+        )
+
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/roscpp.cpp

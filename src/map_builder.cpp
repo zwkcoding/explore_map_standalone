@@ -4,7 +4,7 @@
 
 #include "explore_large_map/map_builder.hpp"
 
-#define OPENCV_SHOW
+//#define OPENCV_SHOW
 
 namespace explore_global_map {
 
@@ -12,7 +12,7 @@ namespace explore_global_map {
     : start_flag_(false),
       tailored_submap_width_(60),
       tailored_submap_height_(40),
-      tailored_submap_x2base_(10){
+      tailored_submap_x2base_(2){
         map_.header.frame_id = "/odom";
         map_.info.width = width;
         map_.info.height = height;
