@@ -22,13 +22,12 @@ namespace explore_global_map {
         map_.info.origin.orientation.w = 1.0;
         map_.data.assign(width * height, -1);  // Fill with "unknown" occupancy.
 
-
     }
 
     void MapBuilder::grow(nav_msgs::Odometry &global_vehicle_pose,
                           iv_slam_ros_msgs::TraversibleArea &traversible_map) {
 
-        // get x,y
+        // get abosolute x,y
         geographic_to_grid(global_vehicle_pose.pose.pose.position.x, global_vehicle_pose.pose.pose.position.y);
         geographic_to_grid(traversible_map.triD_submap_pose.position.x, traversible_map.triD_submap_pose.position.y);
 
@@ -47,8 +46,9 @@ namespace explore_global_map {
             // todo
             if (fabs(pitch) < 0.1 && fabs(roll) < 0.1) {
                 initial_global_vehicle_pos_ = global_vehicle_pose.pose.pose;
-                initial_global_vehicle_pos_.position.x = 0;
+                initial_global_vehicle_pos_.position.x = 0;  // global map center position
                 initial_global_vehicle_pos_.position.y = 0;
+                // remember initial x and y
                 initial_x_ = global_vehicle_pose.pose.pose.position.x;
                 initial_y_ = global_vehicle_pose.pose.pose.position.y;
                 start_flag_ = true;
@@ -205,7 +205,6 @@ namespace explore_global_map {
             int ref_in_odom_x, ref_in_odom_y;
 
             auto start = std::chrono::system_clock::now();
-            // todo x,y is too large, use diff_x, diff_y;
 
             tf::Transform all_trans;
             all_trans = worldToMap(initial_global_vehicle_pos_) * mapToWorld(tailored_submap.triD_submap_pose);
@@ -238,8 +237,8 @@ namespace explore_global_map {
 //                        tf::poseTFToMsg(worldToMap(initial_global_vehicle_pos_) * ps, ps_global_odom);
 //                    }
 
-                    global_map_x = floor( ps_global_odom.position.x  - map_.info.origin.position.x ) / map_.info.resolution;
-                    global_map_y = floor( ps_global_odom.position.y  - map_.info.origin.position.y ) / map_.info.resolution;
+                    global_map_x = floor((ps_global_odom.position.x  - map_.info.origin.position.x) / map_.info.resolution);
+                    global_map_y = floor((ps_global_odom.position.y  - map_.info.origin.position.y) / map_.info.resolution);
                     int index_in_global_map = global_map_y * map_.info.width + global_map_x;
                     if(global_map_x > 0 && global_map_x < map_.info.width &&
                             global_map_y > 0 && global_map_y < map_.info.height) {
