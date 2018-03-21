@@ -12,7 +12,7 @@ namespace explore_global_map {
     : start_flag_(false),
       tailored_submap_width_(60),
       tailored_submap_height_(40),
-      tailored_submap_x2base_(2){
+      tailored_submap_x2base_(10){
         map_.header.frame_id = "/odom";
         map_.info.width = width;
         map_.info.height = height;
@@ -253,7 +253,8 @@ namespace explore_global_map {
                         } else if(tailored_submap.cells[index_in_tailored_map] == 2) {
                             map_.data[index_in_global_map] = 100;
                         } else {
-                            map_.data[index_in_global_map] = -1;
+                            // todo only consider obs and free
+//                            map_.data[index_in_global_map] = -1;
                         }
                     }
                 }

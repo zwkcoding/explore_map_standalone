@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
     double map_width;
     double map_height;
     double map_resolution;
-    nh.param<double>("map_width", map_width, 400);
+    nh.param<double>("map_width", map_width, 800);
     nh.param<double>("map_height", map_height, 800);
     nh.param<double>("map_resolution", map_resolution, 0.1);
 
