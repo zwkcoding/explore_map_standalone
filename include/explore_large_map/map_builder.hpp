@@ -89,6 +89,7 @@ namespace explore_global_map {
         int tailored_submap_height_;
         int tailored_submap_x2base_;
 
+        double initial_x_, initial_y_;
         geometry_msgs::Pose initial_global_vehicle_pos_;
         geometry_msgs::Pose current_odom_vehicle_pos_;
 
