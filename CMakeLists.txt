@@ -66,6 +66,8 @@ target_link_libraries(local_map_node
         ${EIGEN3_LIBRARIES}
         ${OpenCV_LIBRARIES}
         )
+add_executable(get_map_server src/get_map_server.cpp)
+target_link_libraries(get_map_server ${catkin_LIBRARIES})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
