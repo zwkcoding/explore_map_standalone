@@ -22,6 +22,7 @@ namespace explore_global_map {
         map_.info.origin.orientation.w = 1.0;
         map_.data.assign(width * height, -1);  // Fill with "unknown" occupancy.
 
+        vehicle_footprint_pub_ = private_nh_.advertise<visualization_msgs::Marker>("footprint", 10, false);
     }
 
     void MapBuilder::grow(nav_msgs::Odometry &global_vehicle_pose,
@@ -99,6 +100,8 @@ namespace explore_global_map {
             tf::poseTFToMsg(worldToMap(initial_vehicle_pos_in_explore_map) * ps, current_odom_vehicle_pos_);
             ROS_INFO("vehicle position in odom frame (%f[m], %f[m])", current_odom_vehicle_pos_.position.x,
                      current_odom_vehicle_pos_.position.y);
+            // publish marker in explore_map frame
+            publishFootPrint(current_odom_vehicle_pos_, "explore_map");
             // broadcast tf tree between vehicle and explore map
             broadcastTransformBetweenVehicleAndExploreMap();
             // broadcast tf tree betw explore map and odom
@@ -377,6 +380,30 @@ namespace explore_global_map {
         transform.setRotation(q);
         br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/odom", "explore_map"));
 
+    }
+
+    void MapBuilder::publishFootPrint(const geometry_msgs::Pose &pose, const std::string &frame) {
+        // displayFootprint
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = frame;
+        marker.header.stamp = ros::Time();
+        marker.ns = "footprint";
+        marker.id = 0;
+        marker.type = visualization_msgs::Marker::CUBE;
+        marker.action = visualization_msgs::Marker::ADD;
+
+        marker.scale.x = 2.8;
+        marker.scale.y = 4.9;
+        marker.scale.z = 2.0;
+        marker.color.a = 0.3;
+        marker.color.r = 0.0;
+        marker.color.g = 1.0;
+        marker.color.b = 0.0;
+        marker.frame_locked = true;
+
+        marker.pose = pose;
+
+        vehicle_footprint_pub_.publish(marker);
     }
 
 

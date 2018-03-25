@@ -21,6 +21,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #include "explore_large_map/rigid_transform.h"
 #include "explore_large_map/transform.h"
@@ -84,6 +85,7 @@ namespace explore_global_map {
         void broadcastTransformBetweenVehicleAndExploreMap();
         void broadcastTransformBetweenExploreMapAndOdom();
 
+        void publishFootPrint(const geometry_msgs::Pose &pose, const std::string &frame);
 
         bool start_flag_;
 
@@ -100,6 +102,8 @@ namespace explore_global_map {
 
         nav_msgs::OccupancyGrid map_; //!< local map with fixed orientation
 
+        ros::NodeHandle private_nh_;
+        ros::Publisher vehicle_footprint_pub_;
 
 
 
