@@ -81,7 +81,9 @@ namespace explore_global_map {
 
         void tailorSubmap(const iv_slam_ros_msgs::TraversibleArea &traver_map, iv_slam_ros_msgs::TraversibleArea &tailored_submap);
 
-        void broadcastTransformBetweenVehicleAndOdom();
+        void broadcastTransformBetweenVehicleAndExploreMap();
+        void broadcastTransformBetweenExploreMapAndOdom();
+
 
         bool start_flag_;
 
@@ -90,7 +92,8 @@ namespace explore_global_map {
         int tailored_submap_x2base_;
 
         double initial_x_, initial_y_;
-        geometry_msgs::Pose initial_global_vehicle_pos_;
+        geometry_msgs::Pose initial_vehicle_pos_in_odom;
+        geometry_msgs::Pose initial_vehicle_pos_in_explore_map;
         geometry_msgs::Pose current_odom_vehicle_pos_;
 
         tf::TransformBroadcaster br_;
