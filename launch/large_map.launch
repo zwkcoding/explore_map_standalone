@@ -7,8 +7,8 @@
     </node>
 
     <node pkg="explore_large_map" type="local_map_node" name="local_map_node" output="screen" >
-        <param name="map_width" type="double" value="800"/>
-        <param name="map_height" type="double" value="800" />
+        <param name="map_width" type="double" value="500"/>
+        <param name="map_height" type="double" value="1250" />
         <param name="map_resolution" type="double" value="0.1" />
     </node>
 

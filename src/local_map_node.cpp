@@ -13,6 +13,12 @@ iv_slam_ros_msgs::TraversibleArea traversible_map;
 nav_msgs::OccupancyGrid local_map;
 double first_x, first_y;
 
+// vehicle position in local_map [m]
+double vehicle_x_in_map;
+double vehicle_y_in_map;
+
+double far_distance;
+
 bool receive_vehicle_pose = false, receive_traversible_map = false;
 void vehiclePoseCallback(const nav_msgs::Odometry &sub_tem_global_vehicle_pose){
     global_vehicle_pose.header.stamp = sub_tem_global_vehicle_pose.header.stamp;
@@ -52,7 +58,7 @@ void traversibleMapCallback(const iv_slam_ros_msgs::TraversibleArea &subed_msg){
     receive_traversible_map = true;
 }
 
-void project_to_vehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::TraversibleArea &map) {
+void projectToVehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::TraversibleArea &map) {
     static int counter = 0;
     // get abosolute x,y
     explore_global_map::geographic_to_grid(vehicle_pos.pose.pose.position.x, vehicle_pos.pose.pose.position.y);
@@ -127,6 +133,19 @@ void project_to_vehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::Trave
     counter++;
 
 }
+// clear 50m far front of vehicle, make it free for path plan
+void clearFarRegion() {
+    int width = local_map.info.width;
+    int height = local_map.info.height;
+    int clear_area_height_start = (vehicle_y_in_map + far_distance) / local_map.info.resolution;
+    for(int i = 0; i < width; i++) {
+        for(int j = clear_area_height_start; j < height; j++) {
+            int index =  j * width + i;
+            local_map.data[index] = 0;  // clear
+        }
+    }
+}
+
 
 
 int main(int argc, char **argv) {
@@ -139,16 +158,19 @@ int main(int argc, char **argv) {
     double map_width;
     double map_height;
     double map_resolution;
-    nh.param<double>("map_width", map_width, 800);
-    nh.param<double>("map_height", map_height, 800);
+    nh.param<double>("map_width", map_width, 500);
+    nh.param<double>("map_height", map_height, 1250);
+    nh.param<double>("vehicle_x_in_map", vehicle_x_in_map, 25);  //[m]
+    nh.param<double>("vehicle_y_in_map", vehicle_y_in_map, 25);
+    nh.param<double>("far_distance", far_distance, 50);
     nh.param<double>("map_resolution", map_resolution, 0.1);
 
     local_map.header.frame_id = "base_link";
     local_map.info.width = map_width;
     local_map.info.height = map_height;
     local_map.info.resolution = map_resolution;
-    local_map.info.origin.position.x = -static_cast<double>(map_width) / 2 * map_resolution;
-    local_map.info.origin.position.y = -static_cast<double>(map_height) / 2 * map_resolution;
+    local_map.info.origin.position.x = -static_cast<double>(vehicle_x_in_map);
+    local_map.info.origin.position.y = -static_cast<double>(vehicle_y_in_map);
     local_map.info.origin.orientation.w = 1.0;
     local_map.data.assign(map_width * map_height, -1);  // Fill with "unknown" occupancy.
 
@@ -164,7 +186,8 @@ int main(int argc, char **argv) {
         receive_vehicle_pose = receive_traversible_map = false;
         // build map
         auto start = std::chrono::system_clock::now();
-        project_to_vehicle(global_vehicle_pose, traversible_map);
+        projectToVehicle(global_vehicle_pose, traversible_map);
+        clearFarRegion();
         local_map.header.stamp = ros::Time::now();
         map_publisher.publish(local_map);
         auto end = std::chrono::system_clock::now();
