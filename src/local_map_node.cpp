@@ -173,7 +173,7 @@ void rayCasting() {
             } else if (local_map.data[index] == 100) {
                 occ_mat_src.at<uchar>(i, j) = 0;
             } else {
-                occ_mat_src.at<uchar>(i, j) = 127;
+                occ_mat_src.at<uchar>(i, j) = 0;
             }
         }
     }
@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
 
         local_map.header.stamp = ros::Time::now();
         cast_local_map.header.stamp = ros::Time::now();
-        map_publisher.publish(cast_local_map/*local_map*/);
+        map_publisher.publish(local_map);
         auto end = std::chrono::system_clock::now();
         auto msec = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
         std::cout << "local map build cost time msec :" << msec << "\n";

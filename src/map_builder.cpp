@@ -10,9 +10,9 @@ namespace explore_global_map {
 
     explore_global_map::MapBuilder::MapBuilder(int width, int height, double resolution)
     : start_flag_(false),
-      tailored_submap_width_(60),
-      tailored_submap_height_(40),
-      tailored_submap_x2base_(10){
+      tailored_submap_width_(50),
+      tailored_submap_height_(75),
+      tailored_submap_x2base_(25){
         map_.header.frame_id = "explore_map";
         map_.info.width = width;
         map_.info.height = height;
@@ -98,6 +98,8 @@ namespace explore_global_map {
             tf::Pose ps;
             tf::poseMsgToTF(global_vehicle_pose.pose.pose, ps);
             tf::poseTFToMsg(worldToMap(initial_vehicle_pos_in_explore_map) * ps, current_odom_vehicle_pos_);
+            vehicle_pose_in_explore_map_.header.frame_id = "explore_map";
+            vehicle_pose_in_explore_map_.pose.pose = current_odom_vehicle_pos_;
             ROS_INFO("vehicle position in odom frame (%f[m], %f[m])", current_odom_vehicle_pos_.position.x,
                      current_odom_vehicle_pos_.position.y);
             // publish marker in explore_map frame

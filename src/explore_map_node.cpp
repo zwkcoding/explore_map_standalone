@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
     ros::Subscriber publisher = nh.subscribe("/traversible_area_topic", 1, traversibleMapCallback);
     ros::Subscriber vehicle_global_pose_sub = nh.subscribe("/vehicle_global_pose_topic",1,vehiclePoseCallback);
     ros::Publisher map_publisher = nh.advertise<nav_msgs::OccupancyGrid>("/global_map", 1, true);
-
+    ros::Publisher current_position_in_explore_map_pub = nh.advertise<nav_msgs::Odometry>("/odom", 1, false);
     double map_width;
     double map_height;
     double map_resolution;
@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
         std::cout << "global explore map build cost time msec :" << msec << "\n";
 
         map_publisher.publish(map_builder.getMap());
-
+        current_position_in_explore_map_pub.publish(map_builder.getPositionInExploreMap());
 
         ros::spinOnce();
         rate.sleep();
