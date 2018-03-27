@@ -56,8 +56,8 @@ int main(int argc, char **argv) {
     double map_width;
     double map_height;
     double map_resolution;
-    nh.param<double>("map_width", map_width, 1000);
-    nh.param<double>("map_height", map_height, 1000);
+    nh.param<double>("map_width", map_width, 100);
+    nh.param<double>("map_height", map_height, 100);
     nh.param<double>("map_resolution", map_resolution, 0.1);
 
     explore_global_map::MapBuilder map_builder(map_width, map_height, map_resolution);

@@ -71,7 +71,7 @@ namespace explore_global_map {
     class MapBuilder {
 
     public:
-        MapBuilder(int width, int height, double resolution);
+        MapBuilder(double width, double height, double resolution);
 
         void grow( nav_msgs::Odometry &global_vehicle_pose,
                    iv_slam_ros_msgs::TraversibleArea &traversible_map);
@@ -83,7 +83,7 @@ namespace explore_global_map {
 
         void tailorSubmap(const iv_slam_ros_msgs::TraversibleArea &traver_map, iv_slam_ros_msgs::TraversibleArea &tailored_submap);
 
-        void broadcastTransformBetweenVehicleAndExploreMap();
+        void broadcastTransformBetweenVehicleAndExploreMap(geometry_msgs::Pose &current_pose);
         void broadcastTransformBetweenExploreMapAndOdom();
 
         void publishFootPrint(const geometry_msgs::Pose &pose, const std::string &frame);
@@ -94,6 +94,7 @@ namespace explore_global_map {
         int tailored_submap_height_;
         int tailored_submap_x2base_;
 
+        double global_map_width_, global_map_height_;
         double initial_x_, initial_y_;
         geometry_msgs::Pose initial_vehicle_pos_in_odom;
         geometry_msgs::Pose initial_vehicle_pos_in_explore_map;

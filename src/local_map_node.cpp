@@ -131,7 +131,7 @@ void projectToVehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::Travers
                     local_map.data[index_in_global_map] = 100;
                 } else {
                     // notice : deal method is different for explore_map
-                    local_map.data[index_in_global_map] = -1;
+                    local_map.data[index_in_global_map] = 100;
                 }
             }
         }
@@ -198,15 +198,15 @@ void rayCasting() {
         for(auto &value: ray_to_map_border) {
             int row_shift = value / 1250 - 1250 / 2;
             int column_shift = value % 1250 - 1250 / 2;
-            int current_column = 250 + column_shift;
-            int current_row = 250 + row_shift;
+            int current_column = 250 + column_shift;  // x
+            int current_row = 250 + row_shift; // y
             // only reserve point in map
-            if(current_column > 0 && current_column < show_height &&
-               current_row > 0 && current_row < local_map.info.width) {
-                int index = current_column * local_map.info.width + current_row;
+            if(current_column > 0 && current_column < local_map.info.width &&
+               current_row > 0 && current_row < show_height) {
+                int index = current_row * local_map.info.width + current_column;
                 if(100 == local_map.data[index]) {
-                    pt_e2.x = current_row;
-                    pt_e2.y = current_column;
+                    pt_e2.y = current_row;
+                    pt_e2.x = current_column;
                     cv::line(occ_mat_bgr, pt_e1, pt_e2, cv::Scalar(255, 0, 0), 1, 8);
 
                     cast_local_map.data[index] = 100;
@@ -216,12 +216,12 @@ void rayCasting() {
                 }
             } else {
                 if(current_column < 0) current_column = 0;
-                else if(current_column > show_height) current_column = show_height;
+                else if(current_column > local_map.info.width) current_column = local_map.info.width;
                 if(current_row < 0) current_row = 0;
-                else if(current_row > local_map.info.width) current_row = local_map.info.width;
+                else if(current_row > show_height) current_row = show_height;
 
-                pt_e2.x = current_row;
-                pt_e2.y = current_column;
+                pt_e2.y = current_row;
+                pt_e2.x = current_column;
                 cv::line(occ_mat_bgr, pt_e1, pt_e2, cv::Scalar(255, 0, 0), 1, 8);
                 break;
             }
@@ -255,31 +255,31 @@ int main(int argc, char **argv) {
     double map_width;
     double map_height;
     double map_resolution;
-    nh.param<double>("map_width", map_width, 500);
-    nh.param<double>("map_height", map_height, 1250);
+    nh.param<double>("map_width", map_width, 50);
+    nh.param<double>("map_height", map_height, 125);
     nh.param<double>("vehicle_x_in_map", vehicle_x_in_map, 25);  //[m]
     nh.param<double>("vehicle_y_in_map", vehicle_y_in_map, 25);
     nh.param<double>("far_distance", far_distance, 50);
     nh.param<double>("map_resolution", map_resolution, 0.1);
 
     local_map.header.frame_id = "base_link";
-    local_map.info.width = map_width;
-    local_map.info.height = map_height;
+    local_map.info.width = static_cast<int>(map_width / map_resolution);
+    local_map.info.height = static_cast<int>(map_height / map_resolution);
     local_map.info.resolution = map_resolution;
     local_map.info.origin.position.x = -static_cast<double>(vehicle_x_in_map);
     local_map.info.origin.position.y = -static_cast<double>(vehicle_y_in_map);
     local_map.info.origin.orientation.w = 1.0;
-    local_map.data.assign(map_width * map_height, -1);  // Fill with "unknown" occupancy.
+    local_map.data.assign(local_map.info.width * local_map.info.height, 100);  // Fill with obs occupancy.
 
 
-    cast_local_map.header.frame_id = "base_link";
-    cast_local_map.info.width = map_width;
-    cast_local_map.info.height = map_height;
-    cast_local_map.info.resolution = map_resolution;
-    cast_local_map.info.origin.position.x = -static_cast<double>(vehicle_x_in_map);
-    cast_local_map.info.origin.position.y = -static_cast<double>(vehicle_y_in_map);
-    cast_local_map.info.origin.orientation.w = 1.0;
-    cast_local_map.data.assign(map_width * map_height, -1);  // Fill with "unknown" occupancy.
+//    cast_local_map.header.frame_id = "base_link";
+//    cast_local_map.info.width = map_width;
+//    cast_local_map.info.height = map_height;
+//    cast_local_map.info.resolution = map_resolution;
+//    cast_local_map.info.origin.position.x = -static_cast<double>(vehicle_x_in_map);
+//    cast_local_map.info.origin.position.y = -static_cast<double>(vehicle_y_in_map);
+//    cast_local_map.info.origin.orientation.w = 1.0;
+//    cast_local_map.data.assign(map_width * map_height, -1);  // Fill with "unknown" occupancy.
 
 
     // Fill in the lookup cache.
@@ -300,24 +300,29 @@ int main(int argc, char **argv) {
         }
         // reset flag
         receive_vehicle_pose = receive_traversible_map = false;
+
         // build map
         auto start = std::chrono::system_clock::now();
         projectToVehicle(global_vehicle_pose, traversible_map);
         clearFarRegion();
 
         local_map.header.stamp = ros::Time::now();
-        cast_local_map.header.stamp = ros::Time::now();
+//        cast_local_map.header.stamp = ros::Time::now();
         map_publisher.publish(local_map);
         auto end = std::chrono::system_clock::now();
         auto msec = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
         std::cout << "local map build cost time msec :" << msec << "\n";
 
-        start = std::chrono::system_clock::now();
-        // ray casting
-        rayCasting();
-        end = std::chrono::system_clock::now();
-        msec = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
-        std::cout << "ray cast cost time msec :" << msec << "\n";
+        // initial the local map again
+        local_map.data.assign(local_map.info.width * local_map.info.height, 100);  // Fill with obs occupancy.
+
+//
+//        start = std::chrono::system_clock::now();
+//        // ray casting
+//        rayCasting();
+//        end = std::chrono::system_clock::now();
+//        msec = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
+//        std::cout << "ray cast cost time msec :" << msec << "\n";
 
         // show vehicle body
         {
