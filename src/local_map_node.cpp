@@ -5,13 +5,18 @@
 #include <ros/ros.h>
 
 #include "explore_large_map/map_builder.hpp"
-
+#include <map_ray_caster/map_ray_caster.h>
+#define OPENCV_SHOW
 using namespace explore_global_map;
 
 nav_msgs::Odometry global_vehicle_pose;
 iv_slam_ros_msgs::TraversibleArea traversible_map;
 nav_msgs::OccupancyGrid local_map;
+nav_msgs::OccupancyGrid cast_local_map;
+
 double first_x, first_y;
+
+map_ray_caster::MapRayCaster ray_caster;  //!< Ray casting with cache.
 
 // vehicle position in local_map [m]
 double vehicle_x_in_map;
@@ -125,14 +130,21 @@ void projectToVehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::Travers
                 } else if(map.cells[index_in_tailored_map] == 2) {
                     local_map.data[index_in_global_map] = 100;
                 } else {
+                    // notice : deal method is different for explore_map
                     local_map.data[index_in_global_map] = -1;
                 }
             }
         }
     }
     counter++;
+    if(counter > 10000) {
+        counter = 1; // not 0
+    }
+
 
 }
+
+
 // clear 50m far front of vehicle, make it free for path plan
 void clearFarRegion() {
     int width = local_map.info.width;
@@ -146,6 +158,90 @@ void clearFarRegion() {
     }
 }
 
+void rayCasting() {
+
+
+#ifdef OPENCV_SHOW
+    int occ_map_width = local_map.info.width;
+    int occ_map_height = local_map.info.height;
+    cv::Mat occ_mat_src(occ_map_height, occ_map_width, CV_8UC1, cv::Scalar(127));
+    for (int i = 0; i < occ_map_height; i++) {
+        for (int j = 0; j < occ_map_width; j++) {
+            int index = i * occ_map_width + j;
+            if (local_map.data[index] == 0) {
+                occ_mat_src.at<uchar>(i, j) = 255;
+            } else if (local_map.data[index] == 100) {
+                occ_mat_src.at<uchar>(i, j) = 0;
+            } else {
+                occ_mat_src.at<uchar>(i, j) = 127;
+            }
+        }
+    }
+
+    cv::Mat occ_mat_bgr;
+    cv::cvtColor(occ_mat_src, occ_mat_bgr, CV_GRAY2BGR);
+    cv::Point pt_e1,pt_e2;
+    pt_e1.x = 250;
+    pt_e1.y = 250;
+
+
+#endif
+
+    cast_local_map.data.assign(occ_map_width * occ_map_height, -1);  // Fill with "unknown" occupancy.
+
+    static double angle_start = -M_PI;
+    static double angle_end = angle_start + 2 * M_PI - 1e-6;
+    int show_height = local_map.info.height - 500;
+    for (double a = angle_start; a <= angle_end; a += M_PI / 180) {
+        std::vector<size_t> ray_to_map_border;
+        ray_to_map_border = ray_caster.getRayCastToMapBorder(a, 1250, 1250, 1.1 * M_PI / 180);
+        for(auto &value: ray_to_map_border) {
+            int row_shift = value / 1250 - 1250 / 2;
+            int column_shift = value % 1250 - 1250 / 2;
+            int current_column = 250 + column_shift;
+            int current_row = 250 + row_shift;
+            // only reserve point in map
+            if(current_column > 0 && current_column < show_height &&
+               current_row > 0 && current_row < local_map.info.width) {
+                int index = current_column * local_map.info.width + current_row;
+                if(100 == local_map.data[index]) {
+                    pt_e2.x = current_row;
+                    pt_e2.y = current_column;
+                    cv::line(occ_mat_bgr, pt_e1, pt_e2, cv::Scalar(255, 0, 0), 1, 8);
+
+                    cast_local_map.data[index] = 100;
+                    break;
+                } else {
+                    cast_local_map.data[index] = 0;
+                }
+            } else {
+                if(current_column < 0) current_column = 0;
+                else if(current_column > show_height) current_column = show_height;
+                if(current_row < 0) current_row = 0;
+                else if(current_row > local_map.info.width) current_row = local_map.info.width;
+
+                pt_e2.x = current_row;
+                pt_e2.y = current_column;
+                cv::line(occ_mat_bgr, pt_e1, pt_e2, cv::Scalar(255, 0, 0), 1, 8);
+                break;
+            }
+
+        }
+
+    }
+
+
+    cv::Mat occ_mat_bgr_r;
+    cv::flip(occ_mat_bgr, occ_mat_bgr_r, 0);
+    cv::namedWindow("casting_map", 0);
+    cv::imshow("casting_map", occ_mat_bgr_r);
+    cv::waitKey(1);
+
+}
+
+
+
+
 
 
 int main(int argc, char **argv) {
@@ -154,6 +250,7 @@ int main(int argc, char **argv) {
     ros::Subscriber publisher = nh.subscribe("/traversible_area_topic", 1, traversibleMapCallback);
     ros::Subscriber vehicle_global_pose_sub = nh.subscribe("/vehicle_global_pose_topic",1,vehiclePoseCallback);
     ros::Publisher map_publisher = nh.advertise<nav_msgs::OccupancyGrid>("/local_map", 1, true);
+    ros::Publisher vehicle_footprint_pub_ = nh.advertise<visualization_msgs::Marker>("footprint", 10, false);
 
     double map_width;
     double map_height;
@@ -175,6 +272,25 @@ int main(int argc, char **argv) {
     local_map.data.assign(map_width * map_height, -1);  // Fill with "unknown" occupancy.
 
 
+    cast_local_map.header.frame_id = "base_link";
+    cast_local_map.info.width = map_width;
+    cast_local_map.info.height = map_height;
+    cast_local_map.info.resolution = map_resolution;
+    cast_local_map.info.origin.position.x = -static_cast<double>(vehicle_x_in_map);
+    cast_local_map.info.origin.position.y = -static_cast<double>(vehicle_y_in_map);
+    cast_local_map.info.origin.orientation.w = 1.0;
+    cast_local_map.data.assign(map_width * map_height, -1);  // Fill with "unknown" occupancy.
+
+
+    // Fill in the lookup cache.
+    const double angle_start = -M_PI;
+    const double angle_end = angle_start + 2 * M_PI - 1e-6;
+    for (double a = angle_start; a <= angle_end; a += M_PI / 720)
+    {
+        ray_caster.getRayCastToMapBorder(a, 1250, 1250, 0.9 * M_PI / 720);
+    }
+
+
     ros::Rate rate(10.0);
     while (nh.ok()) {
         // wait for msg
@@ -188,12 +304,43 @@ int main(int argc, char **argv) {
         auto start = std::chrono::system_clock::now();
         projectToVehicle(global_vehicle_pose, traversible_map);
         clearFarRegion();
+
         local_map.header.stamp = ros::Time::now();
-        map_publisher.publish(local_map);
+        cast_local_map.header.stamp = ros::Time::now();
+        map_publisher.publish(cast_local_map/*local_map*/);
         auto end = std::chrono::system_clock::now();
         auto msec = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
         std::cout << "local map build cost time msec :" << msec << "\n";
 
+        start = std::chrono::system_clock::now();
+        // ray casting
+        rayCasting();
+        end = std::chrono::system_clock::now();
+        msec = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
+        std::cout << "ray cast cost time msec :" << msec << "\n";
+
+        // show vehicle body
+        {
+            // displayFootprint
+            visualization_msgs::Marker marker;
+            marker.header.frame_id = "base_link";
+            marker.header.stamp = ros::Time();
+            marker.type = visualization_msgs::Marker::CUBE;
+            marker.action = visualization_msgs::Marker::ADD;
+
+            marker.scale.x = 2.8;
+            marker.scale.y = 4.9;
+            marker.scale.z = 2.0;
+            marker.color.a = 0.3;
+            marker.color.r = 0.0;
+            marker.color.g = 1.0;
+            marker.color.b = 0.0;
+            marker.frame_locked = true;
+
+            marker.pose.position.x = 0;
+            marker.pose.position.y = 0;
+            vehicle_footprint_pub_.publish(marker);
+        }
 
         ros::spinOnce();
         rate.sleep();

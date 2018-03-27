@@ -272,7 +272,7 @@ namespace explore_global_map {
 #ifdef OPENCV_SHOW
             int occ_map_width = map_.info.width;
             int occ_map_height = map_.info.height;
-            cv::Mat occ_mat_src(occ_map_width, occ_map_height, CV_8UC1, cv::Scalar(127));
+            cv::Mat occ_mat_src(occ_map_height, occ_map_width, CV_8UC1, cv::Scalar(127));
             for(int i = 0; i < occ_map_height; i++) {
                 for(int j = 0; j < occ_map_width; j++) {
                     int index = i * occ_map_width + j;
