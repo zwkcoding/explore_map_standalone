@@ -60,8 +60,10 @@ namespace explore_global_map {
 //                initial_vehicle_pos_in_explore_map.position.x = 0;  // global map center position
 //                initial_vehicle_pos_in_explore_map.position.y = 0;
 //                // remember initial x and y
-//                initial_x_ = global_vehicle_pose.pose.pose.position.x;
-//                initial_y_ = global_vehicle_pose.pose.pose.position.y;
+                initial_x_ = global_vehicle_pose.pose.pose.position.x;
+                initial_y_ = global_vehicle_pose.pose.pose.position.y;
+                global_vehicle_pose.pose.pose.position.x -= initial_x_;
+                global_vehicle_pose.pose.pose.position.y -= initial_y_;
 
                 double map_origin_x = global_vehicle_pose.pose.pose.position.x - global_map_width_ / 2;
                 double map_origin_y = global_vehicle_pose.pose.pose.position.y - global_map_height_ / 2;
@@ -74,11 +76,11 @@ namespace explore_global_map {
             }
         } else {
 
-            // calc diff
-//            global_vehicle_pose.pose.pose.position.x = global_vehicle_pose.pose.pose.position.x - initial_x_;
-//            global_vehicle_pose.pose.pose.position.y = global_vehicle_pose.pose.pose.position.y - initial_y_;
-//            traversible_map.triD_submap_pose.position.x = traversible_map.triD_submap_pose.position.x - initial_x_;
-//            traversible_map.triD_submap_pose.position.y = traversible_map.triD_submap_pose.position.y - initial_y_;
+//             calc diff
+            global_vehicle_pose.pose.pose.position.x = global_vehicle_pose.pose.pose.position.x - initial_x_;
+            global_vehicle_pose.pose.pose.position.y = global_vehicle_pose.pose.pose.position.y - initial_y_;
+            traversible_map.triD_submap_pose.position.x = traversible_map.triD_submap_pose.position.x - initial_x_;
+            traversible_map.triD_submap_pose.position.y = traversible_map.triD_submap_pose.position.y - initial_y_;
 
             // tailor submap, small filter
             iv_slam_ros_msgs::TraversibleArea tailored_submap;
@@ -115,14 +117,26 @@ namespace explore_global_map {
 //
 //            vehicle_pose_in_explore_map_.header.frame_id = "explore_map";
 //            vehicle_pose_in_explore_map_.pose.pose = current_odom_vehicle_pos_;
-            ROS_INFO("vehicle position in odom frame (%f[m], %f[m], %f[degree])", global_vehicle_pose.pose.pose.position.x,
+            ROS_INFO_THROTTLE(0.5, "vehicle position in odom frame (%f[m], %f[m], %f[degree])", global_vehicle_pose.pose.pose.position.x,
                      global_vehicle_pose.pose.pose.position.y, vehilce_yaw * 180 / M_PI);
+
+            geometry_msgs::Pose abso_odom_vehicle_pose;
+            geometry_msgs::Pose base_odom_pose;
+            base_odom_pose.position.x = initial_x_;
+            base_odom_pose.position.y = initial_y_;
+            tf::quaternionTFToMsg(tf::createQuaternionFromYaw(0.0), base_odom_pose.orientation);
+            tf::Pose ps;
+            tf::poseMsgToTF(global_vehicle_pose.pose.pose, ps);
+            tf::poseTFToMsg(mapToWorld(base_odom_pose) * ps, abso_odom_vehicle_pose);
+            ROS_INFO_THROTTLE(0.5, "vehicle position in abs_odom frame (%f[m], %f[m], %f[degree])", abso_odom_vehicle_pose.position.x,
+                     abso_odom_vehicle_pose.position.y, tf::getYaw(abso_odom_vehicle_pose.orientation) * 180 / M_PI);
+            ROS_INFO_THROTTLE(0.5, "odom_base_x: %f[m], odom_base_y : %f[m]", initial_x_, initial_y_);
             // publish marker in explore_map frame
             publishFootPrint(global_vehicle_pose.pose.pose, "/odom");
 //            // broadcast tf tree between vehicle and explore map
             broadcastTransformBetweenVehicleAndExploreMap(global_vehicle_pose.pose.pose);
 //            // broadcast tf tree betw explore map and odom
-//            broadcastTransformBetweenExploreMapAndOdom();
+            broadcastTransformBetweenExploreMapAndOdom();
 
 
 #ifdef OPENCV_SHOW
@@ -390,12 +404,13 @@ namespace explore_global_map {
 
     void MapBuilder::broadcastTransformBetweenExploreMapAndOdom() {
         tf::Transform transform;
-        transform.setOrigin(tf::Vector3(initial_vehicle_pos_in_odom.position.x,
-                                        initial_vehicle_pos_in_odom.position.y, 0));
+        transform.setOrigin(tf::Vector3(initial_x_,
+                                        initial_y_, 0));
         tf::Quaternion q;
-        tf::quaternionMsgToTF(initial_vehicle_pos_in_odom.orientation, q);
+        q.setRPY(0, 0, 0);
         transform.setRotation(q);
-        br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/odom", "explore_map"));
+//        transform.setRotation(tf::Quaternion(0, 0, 0, 1));
+        br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/abso_odom", "/odom"));
 
     }
 

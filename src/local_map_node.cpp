@@ -327,7 +327,8 @@ int main(int argc, char **argv) {
         map_publisher.publish(local_map);
         auto end = std::chrono::system_clock::now();
         auto msec = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
-        std::cout << "local map build cost time msec :" << msec << "\n";
+//        std::cout << "local map build cost time msec :" << msec << "\n";
+        ROS_INFO_STREAM_THROTTLE(0.5,"local map build cost time [msec] :" << msec);
 
         // initial the local map again
         local_map.data.assign(local_map.info.width * local_map.info.height, unknown_value);  // Fill with free occupancy.

@@ -76,14 +76,15 @@ int main(int argc, char **argv) {
         map_builder.grow(global_vehicle_pose, traversible_map);
         auto end = std::chrono::system_clock::now();
         auto msec = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
-        std::cout << "global explore map build cost time msec :" << msec << "\n";
-
+//        std::cout << "global explore map build cost time msec :" << msec << "\n";
+        ROS_INFO_STREAM_THROTTLE(0.5,"global explore map build cost time [msec] :" << msec);
         map_publisher.publish(map_builder.getMap());
         nav_msgs::Odometry odom_global_vehicle_pose;
         odom_global_vehicle_pose = global_vehicle_pose;
         odom_global_vehicle_pose.header.frame_id = "/odom";
         odom_global_vehicle_pose.header.stamp = ros::Time::now();
         current_position_in_explore_map_pub.publish(odom_global_vehicle_pose);
+
 
         ros::spinOnce();
         rate.sleep();
