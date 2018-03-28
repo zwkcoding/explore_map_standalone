@@ -107,6 +107,8 @@ namespace explore_global_map {
         ros::NodeHandle private_nh_;
         ros::Publisher vehicle_footprint_pub_;
 
+        int unknown_value_;
+
 
 
 

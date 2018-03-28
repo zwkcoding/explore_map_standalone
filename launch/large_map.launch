@@ -4,6 +4,7 @@
         <param name="map_width" type="double" value="100"/>
         <param name="map_height" type="double" value="100" />
         <param name="map_resolution" type="double" value="0.1" />
+        <param name="unknown_value" type="int" value="0" />
     </node>
 
     <node pkg="explore_large_map" type="local_map_node" name="local_map_node" output="screen" >
@@ -13,7 +14,10 @@
         <param name="vehicle_x_in_map" type="double" value="25" />
         <param name="vehicle_y_in_map" type="double" value="25" />
         <param name="map_resolution" type="double" value="0.1" />
+        <param name="unknown_value" type="int" value="0" />
+
     </node>
+
 
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find explore_large_map)/cfg/explore_map_viz.rviz"/>
 

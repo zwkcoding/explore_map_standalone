@@ -15,7 +15,7 @@ nav_msgs::OccupancyGrid local_map;
 nav_msgs::OccupancyGrid cast_local_map;
 
 double first_x, first_y;
-
+int unknown_value = 0;
 map_ray_caster::MapRayCaster ray_caster;  //!< Ray casting with cache.
 
 // vehicle position in local_map [m]
@@ -130,8 +130,8 @@ void projectToVehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::Travers
                 } else if(map.cells[index_in_tailored_map] == 2) {
                     local_map.data[index_in_global_map] = 100;
                 } else {
-                    // notice : deal method is different for explore_map
-                    local_map.data[index_in_global_map] = 100;
+                    // notice : unknown is free
+                    local_map.data[index_in_global_map] = unknown_value;
                 }
             }
         }
@@ -255,12 +255,14 @@ int main(int argc, char **argv) {
     double map_width;
     double map_height;
     double map_resolution;
+
     nh.param<double>("map_width", map_width, 50);
     nh.param<double>("map_height", map_height, 125);
     nh.param<double>("vehicle_x_in_map", vehicle_x_in_map, 25);  //[m]
     nh.param<double>("vehicle_y_in_map", vehicle_y_in_map, 25);
     nh.param<double>("far_distance", far_distance, 50);
     nh.param<double>("map_resolution", map_resolution, 0.1);
+    nh.param<int>("unknown_value", unknown_value, 0);
 
     local_map.header.frame_id = "base_link";
     local_map.info.width = static_cast<int>(map_width / map_resolution);
@@ -269,7 +271,7 @@ int main(int argc, char **argv) {
     local_map.info.origin.position.x = -static_cast<double>(vehicle_x_in_map);
     local_map.info.origin.position.y = -static_cast<double>(vehicle_y_in_map);
     local_map.info.origin.orientation.w = 1.0;
-    local_map.data.assign(local_map.info.width * local_map.info.height, 100);  // Fill with obs occupancy.
+    local_map.data.assign(local_map.info.width * local_map.info.height, unknown_value);  // Fill with free occupancy.
 
 
 //    cast_local_map.header.frame_id = "base_link";
@@ -314,7 +316,7 @@ int main(int argc, char **argv) {
         std::cout << "local map build cost time msec :" << msec << "\n";
 
         // initial the local map again
-        local_map.data.assign(local_map.info.width * local_map.info.height, 100);  // Fill with obs occupancy.
+        local_map.data.assign(local_map.info.width * local_map.info.height, unknown_value);  // Fill with free occupancy.
 
 //
 //        start = std::chrono::system_clock::now();

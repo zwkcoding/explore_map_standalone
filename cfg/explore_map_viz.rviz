@@ -54,7 +54,7 @@ Visualization Manager:
       Value: true
     - Alpha: 0.699999988
       Class: rviz/Map
-      Color Scheme: costmap
+      Color Scheme: map
       Draw Behind: false
       Enabled: true
       Name: Map
@@ -64,14 +64,14 @@ Visualization Manager:
       Value: true
     - Alpha: 0.699999988
       Class: rviz/Map
-      Color Scheme: costmap
+      Color Scheme: map
       Draw Behind: false
-      Enabled: false
+      Enabled: true
       Name: Map
       Topic: /local_map
       Unreliable: false
       Use Timestamp: false
-      Value: false
+      Value: true
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /footprint
@@ -97,7 +97,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: false
+      Enabled: true
       Keep: 1000
       Name: Odometry
       Position Tolerance: 0.100000001
@@ -113,7 +113,7 @@ Visualization Manager:
         Value: Arrow
       Topic: /odom
       Unreliable: false
-      Value: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -147,7 +147,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 0.511663556
+      Scale: 0.901726067
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
       X: -229480.484

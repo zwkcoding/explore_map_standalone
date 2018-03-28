@@ -79,7 +79,11 @@ int main(int argc, char **argv) {
         std::cout << "global explore map build cost time msec :" << msec << "\n";
 
         map_publisher.publish(map_builder.getMap());
-        current_position_in_explore_map_pub.publish(map_builder.getPositionInExploreMap());
+        nav_msgs::Odometry odom_global_vehicle_pose;
+        odom_global_vehicle_pose = global_vehicle_pose;
+        odom_global_vehicle_pose.header.frame_id = "/odom";
+        odom_global_vehicle_pose.header.stamp = ros::Time::now();
+        current_position_in_explore_map_pub.publish(odom_global_vehicle_pose);
 
         ros::spinOnce();
         rate.sleep();

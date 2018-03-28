@@ -24,7 +24,9 @@ namespace explore_global_map {
 //        map_.info.origin.position.x = -static_cast<double>(width) / 2 * resolution;
 //        map_.info.origin.position.y = -static_cast<double>(height) / 2 * resolution;
 //        map_.info.origin.orientation.w = 1.0;
-        map_.data.assign(map_.info.width * map_.info.height, -1);  // Fill with "unknown" occupancy.
+
+        private_nh_.param<int>("unknown_value", unknown_value_, 0);
+        map_.data.assign(map_.info.width * map_.info.height, unknown_value_);  // Fill with "unknown" occupancy.
 
         vehicle_footprint_pub_ = private_nh_.advertise<visualization_msgs::Marker>("footprint", 10, false);
     }
@@ -275,7 +277,7 @@ namespace explore_global_map {
                         } else if(tailored_submap.cells[index_in_tailored_map] == 2) {
                             map_.data[index_in_global_map] = 100;
                         } else {
-                            // todo only consider obs and free
+                            // todo only consider obs and free, ignore unknwon cell
 //                            map_.data[index_in_global_map] = -1;
                         }
                     }
@@ -343,7 +345,7 @@ namespace explore_global_map {
         tailored_submap.height = end_index_y - start_index_y;
         tailored_submap.triD_submap_pose_image_index_x = submap_x - start_index_x;
         tailored_submap.triD_submap_pose_image_index_y = submap_y - start_index_y;
-        tailored_submap.cells.assign(tailored_submap.width * tailored_submap.height, 0);
+        tailored_submap.cells.assign(tailored_submap.width * tailored_submap.height, 0);  //0 mean unknown cell
 
 //        ROS_INFO("tailor_map: width --> %d  height --> %d , ref position :(%d, %d)", tailored_submap.width, tailored_submap.height,
 //                 submap_x - start_index_x, submap_y - start_index_y);
