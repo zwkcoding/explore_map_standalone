@@ -52,7 +52,7 @@ namespace explore_global_map {
         longitude = E;
     }
 
-    inline geometry_msgs::Quaternion reverse_yaw_roll(const geometry_msgs::Quaternion &origin) {
+    inline geometry_msgs::Quaternion adjustRPYConvention(const geometry_msgs::Quaternion &origin) {
         tf::Quaternion q;
         tf::quaternionMsgToTF(origin, q);
         tf::Matrix3x3 m(q);
@@ -62,6 +62,10 @@ namespace explore_global_map {
         double temp = roll;
         roll = pitch;
         pitch = temp;
+        // ivrc convention, north is 0 degree, counter clockwise is positive
+        yaw += M_PI_2;
+        if(yaw > M_PI) yaw -= 2 * M_PI;
+        if(yaw < -M_PI) yaw += 2* M_PI;
         tf::Quaternion q_new = tf::createQuaternionFromRPY(roll, pitch, yaw);
         geometry_msgs::Quaternion msg;
         tf::quaternionTFToMsg(q_new, msg);

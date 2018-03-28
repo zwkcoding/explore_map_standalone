@@ -42,7 +42,7 @@ namespace explore_global_map {
 
         if(!start_flag_) {
             geometry_msgs::Quaternion msg;
-            msg = reverse_yaw_roll(global_vehicle_pose.pose.pose.orientation);
+            msg = adjustRPYConvention(global_vehicle_pose.pose.pose.orientation);
             global_vehicle_pose.pose.pose.orientation = msg;
 
             tf::Quaternion q;
@@ -88,9 +88,9 @@ namespace explore_global_map {
 
             // reverse yaw and roll sequence
             geometry_msgs::Quaternion msg;
-            msg = reverse_yaw_roll(tailored_submap.triD_submap_pose.orientation);
+            msg = adjustRPYConvention(tailored_submap.triD_submap_pose.orientation);
             tailored_submap.triD_submap_pose.orientation = msg;
-            msg = reverse_yaw_roll(global_vehicle_pose.pose.pose.orientation);
+            msg = adjustRPYConvention(global_vehicle_pose.pose.pose.orientation);
             global_vehicle_pose.pose.pose.orientation = msg;
 
             // get submap rpy
@@ -424,8 +424,8 @@ namespace explore_global_map {
         marker.type = visualization_msgs::Marker::CUBE;
         marker.action = visualization_msgs::Marker::ADD;
 
-        marker.scale.x = 4.9;
-        marker.scale.y = 2.8;
+        marker.scale.x = 2.8;
+        marker.scale.y = 4.9;
         marker.scale.z = 2.0;
         marker.color.a = 0.3;
         marker.color.r = 0.0;

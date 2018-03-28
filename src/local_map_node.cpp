@@ -83,9 +83,9 @@ void projectToVehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::Travers
 
     // reverse yaw and roll sequence
     geometry_msgs::Quaternion msg;
-    msg = explore_global_map::reverse_yaw_roll(map.triD_submap_pose.orientation);
+    msg = explore_global_map::adjustRPYConvention(map.triD_submap_pose.orientation);
     map.triD_submap_pose.orientation = msg;
-    msg = explore_global_map::reverse_yaw_roll(vehicle_pos.pose.pose.orientation);
+    msg = explore_global_map::adjustRPYConvention(vehicle_pos.pose.pose.orientation);
     vehicle_pos.pose.pose.orientation = msg;
 
     // fill  map cell value into vehicle local map
@@ -357,8 +357,8 @@ int main(int argc, char **argv) {
             marker.type = visualization_msgs::Marker::CUBE;
             marker.action = visualization_msgs::Marker::ADD;
 
-            marker.scale.x = 4.9;
-            marker.scale.y = 2.8;
+            marker.scale.x = 2.8;
+            marker.scale.y = 4.9;
             marker.scale.z = 2.0;
             marker.color.a = 0.3;
             marker.color.r = 1.0;
