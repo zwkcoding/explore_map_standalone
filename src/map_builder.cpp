@@ -115,8 +115,8 @@ namespace explore_global_map {
 //
 //            vehicle_pose_in_explore_map_.header.frame_id = "explore_map";
 //            vehicle_pose_in_explore_map_.pose.pose = current_odom_vehicle_pos_;
-            ROS_INFO("vehicle position in odom frame (%f[m], %f[m], %f[radian])", global_vehicle_pose.pose.pose.position.x,
-                     global_vehicle_pose.pose.pose.position.y, vehilce_yaw);
+            ROS_INFO("vehicle position in odom frame (%f[m], %f[m], %f[degree])", global_vehicle_pose.pose.pose.position.x,
+                     global_vehicle_pose.pose.pose.position.y, vehilce_yaw * 180 / M_PI);
             // publish marker in explore_map frame
             publishFootPrint(global_vehicle_pose.pose.pose, "/odom");
 //            // broadcast tf tree between vehicle and explore map
@@ -306,8 +306,8 @@ namespace explore_global_map {
             cv::Mat occ_mat_bgr;
             cv::cvtColor(occ_mat_src, occ_mat_bgr, CV_GRAY2BGR);
             cv::Point2d current_pos;
-            current_pos.x = (current_odom_vehicle_pos_.position.x - map_.info.origin.position.x) / map_.info.resolution;
-            current_pos.y = (current_odom_vehicle_pos_.position.y - map_.info.origin.position.y) / map_.info.resolution;
+            current_pos.x = (global_vehicle_pose.pose.pose.position.x - map_.info.origin.position.x) / map_.info.resolution;
+            current_pos.y = (global_vehicle_pose.pose.pose.position.y - map_.info.origin.position.y) / map_.info.resolution;
             cv::circle(occ_mat_bgr, current_pos, 5, cv::Scalar(0, 0, 255), -1); // red
             cv::circle(occ_mat_bgr, cv::Point(ref_in_odom_x, ref_in_odom_y), 5, cv::Scalar(255, 0, 0), -1); // blue
 
@@ -404,13 +404,13 @@ namespace explore_global_map {
         visualization_msgs::Marker marker;
         marker.header.frame_id = frame;
         marker.header.stamp = ros::Time();
-        marker.ns = "footprint";
+        marker.ns = "global_map/footprint";
         marker.id = 0;
         marker.type = visualization_msgs::Marker::CUBE;
         marker.action = visualization_msgs::Marker::ADD;
 
-        marker.scale.x = 2.8;
-        marker.scale.y = 4.9;
+        marker.scale.x = 4.9;
+        marker.scale.y = 2.8;
         marker.scale.z = 2.0;
         marker.color.a = 0.3;
         marker.color.r = 0.0;

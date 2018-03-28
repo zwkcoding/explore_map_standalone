@@ -6,7 +6,9 @@
 
 #include "explore_large_map/map_builder.hpp"
 #include <map_ray_caster/map_ray_caster.h>
-#define OPENCV_SHOW
+//#define OPENCV_SHOW
+
+#define NEW_LOCAL_MAP  // small size version of global map
 using namespace explore_global_map;
 
 nav_msgs::Odometry global_vehicle_pose;
@@ -17,7 +19,6 @@ nav_msgs::OccupancyGrid cast_local_map;
 double first_x, first_y;
 int unknown_value = 0;
 map_ray_caster::MapRayCaster ray_caster;  //!< Ray casting with cache.
-
 // vehicle position in local_map [m]
 double vehicle_x_in_map;
 double vehicle_y_in_map;
@@ -96,7 +97,12 @@ void projectToVehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::Travers
     int global_map_x, global_map_y;
     int ref_in_odom_x, ref_in_odom_y;
     tf::Transform all_trans;
+#ifndef NEW_LOCAL_MAP
     all_trans = worldToMap(vehicle_pos.pose.pose) * mapToWorld(map.triD_submap_pose);
+#else
+    all_trans =  mapToWorld(map.triD_submap_pose);
+#endif
+
     for(int i = 0; i < map.height; i++) {
         for(int j = 0; j < map.width; j++) {
             int index_in_tailored_map = i * map.width + j;
@@ -114,6 +120,10 @@ void projectToVehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::Travers
                 tf::poseTFToMsg(all_trans * ps, ps_global_odom);
             }
 
+#ifdef NEW_LOCAL_MAP
+            ps_global_odom.position.x -= vehicle_pos.pose.pose.position.x;
+            ps_global_odom.position.y -= vehicle_pos.pose.pose.position.y;
+#endif
             global_map_x = floor((ps_global_odom.position.x  - local_map.info.origin.position.x) / local_map.info.resolution);
             global_map_y = floor((ps_global_odom.position.y  - local_map.info.origin.position.y) / local_map.info.resolution);
             int index_in_global_map = global_map_y * local_map.info.width + global_map_x;
@@ -142,6 +152,8 @@ void projectToVehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::Travers
     }
 
 
+
+
 }
 
 
@@ -161,7 +173,7 @@ void clearFarRegion() {
 void rayCasting() {
 
 
-#ifdef OPENCV_SHOW
+
     int occ_map_width = local_map.info.width;
     int occ_map_height = local_map.info.height;
     cv::Mat occ_mat_src(occ_map_height, occ_map_width, CV_8UC1, cv::Scalar(127));
@@ -173,7 +185,7 @@ void rayCasting() {
             } else if (local_map.data[index] == 100) {
                 occ_mat_src.at<uchar>(i, j) = 0;
             } else {
-                occ_mat_src.at<uchar>(i, j) = 0;
+                occ_mat_src.at<uchar>(i, j) = 127;
             }
         }
     }
@@ -185,9 +197,9 @@ void rayCasting() {
     pt_e1.y = 250;
 
 
-#endif
 
-    cast_local_map.data.assign(occ_map_width * occ_map_height, -1);  // Fill with "unknown" occupancy.
+
+    cast_local_map.data.assign(occ_map_width * occ_map_height, unknown_value);  // Fill with "unknown" occupancy.
 
     static double angle_start = -M_PI;
     static double angle_end = angle_start + 2 * M_PI - 1e-6;
@@ -230,13 +242,14 @@ void rayCasting() {
 
     }
 
-
+#ifdef OPENCV_SHOW
     cv::Mat occ_mat_bgr_r;
     cv::flip(occ_mat_bgr, occ_mat_bgr_r, 0);
     cv::namedWindow("casting_map", 0);
     cv::imshow("casting_map", occ_mat_bgr_r);
     cv::waitKey(1);
 
+#endif
 }
 
 
@@ -292,6 +305,7 @@ int main(int argc, char **argv) {
         ray_caster.getRayCastToMapBorder(a, 1250, 1250, 0.9 * M_PI / 720);
     }
 
+    tf::TransformBroadcaster tr_broadcaster;  //!< To broadcast the transform from base_link to local map.
 
     ros::Rate rate(10.0);
     while (nh.ok()) {
@@ -330,13 +344,13 @@ int main(int argc, char **argv) {
         {
             // displayFootprint
             visualization_msgs::Marker marker;
-            marker.header.frame_id = "base_link";
+            marker.header.frame_id = "/local_map_frame";
             marker.header.stamp = ros::Time();
             marker.type = visualization_msgs::Marker::CUBE;
             marker.action = visualization_msgs::Marker::ADD;
 
-            marker.scale.x = 2.8;
-            marker.scale.y = 4.9;
+            marker.scale.x = 4.9;
+            marker.scale.y = 2.8;
             marker.scale.z = 2.0;
             marker.color.a = 0.3;
             marker.color.r = 0.0;
@@ -348,6 +362,14 @@ int main(int argc, char **argv) {
             marker.pose.position.y = 0;
             vehicle_footprint_pub_.publish(marker);
         }
+
+        // publisher tf
+        double theta = tf::getYaw(global_vehicle_pose.pose.pose.orientation);
+        tf::Transform map_transform;
+        map_transform.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
+        tf::Quaternion q;
+        q.setRPY(0, 0, -theta);
+        tr_broadcaster.sendTransform(tf::StampedTransform(map_transform, ros::Time::now(), "base_link", "/local_map_frame"));
 
         ros::spinOnce();
         rate.sleep();
