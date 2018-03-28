@@ -277,7 +277,14 @@ int main(int argc, char **argv) {
     nh.param<double>("map_resolution", map_resolution, 0.1);
     nh.param<int>("unknown_value", unknown_value, 0);
 
-    local_map.header.frame_id = "base_link";
+    std::string map_frame;
+#ifdef NEW_LOCAL_MAP
+    map_frame = "/local_map_frame";
+#else
+    map_frame = "base_link";
+#endif
+
+    local_map.header.frame_id = map_frame;
     local_map.info.width = static_cast<int>(map_width / map_resolution);
     local_map.info.height = static_cast<int>(map_height / map_resolution);
     local_map.info.resolution = map_resolution;
@@ -345,7 +352,7 @@ int main(int argc, char **argv) {
         {
             // displayFootprint
             visualization_msgs::Marker marker;
-            marker.header.frame_id = "/local_map_frame";
+            marker.header.frame_id = map_frame;
             marker.header.stamp = ros::Time();
             marker.type = visualization_msgs::Marker::CUBE;
             marker.action = visualization_msgs::Marker::ADD;
@@ -354,8 +361,8 @@ int main(int argc, char **argv) {
             marker.scale.y = 2.8;
             marker.scale.z = 2.0;
             marker.color.a = 0.3;
-            marker.color.r = 0.0;
-            marker.color.g = 1.0;
+            marker.color.r = 1.0;
+            marker.color.g = 0.0;
             marker.color.b = 0.0;
             marker.frame_locked = true;
 
@@ -366,10 +373,12 @@ int main(int argc, char **argv) {
 
         // publisher tf
         double theta = tf::getYaw(global_vehicle_pose.pose.pose.orientation);
+//        ROS_INFO("------------------THETA : %f" , theta * 180 / M_PI);
         tf::Transform map_transform;
         map_transform.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
         tf::Quaternion q;
         q.setRPY(0, 0, -theta);
+        map_transform.setRotation(q);
         tr_broadcaster.sendTransform(tf::StampedTransform(map_transform, ros::Time::now(), "base_link", "/local_map_frame"));
 
         ros::spinOnce();

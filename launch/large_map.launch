@@ -19,6 +19,6 @@
     </node>
 
 
-    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find explore_large_map)/cfg/explore_map_viz.rviz"/>
+    <node pkg="rviz" type="rviz" name="rviz_explore_map" args="-d $(find explore_large_map)/cfg/explore_map_viz.rviz"/>
 
 </launch>
