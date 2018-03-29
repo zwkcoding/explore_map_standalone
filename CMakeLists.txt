@@ -13,7 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
         tf
         visualization_msgs
         iv_slam_ros_msgs
-        map_ray_caster
         )
 
 find_package(OpenCV REQUIRED)
@@ -58,18 +57,21 @@ target_link_libraries(${PROJECT_NAME}_node
    ${OpenCV_LIBRARIES}
  )
 
-add_executable(local_map_node src/local_map_node.cpp
-        src/map_builder.cpp
+add_executable(map_entry src/map_entry.cpp
         src/rigid_transform.cc
         src/transform.cc)
 
-target_link_libraries(local_map_node
+target_link_libraries(map_entry
         ${catkin_LIBRARIES}
         ${EIGEN3_LIBRARIES}
         ${OpenCV_LIBRARIES}
         )
+
 add_executable(get_map_server src/get_map_server.cpp)
 target_link_libraries(get_map_server ${catkin_LIBRARIES})
+
+
+
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}

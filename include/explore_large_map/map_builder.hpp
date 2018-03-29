@@ -98,9 +98,6 @@ namespace explore_global_map {
         void grow(nav_msgs::Odometry &global_vehicle_pose,
                               nav_msgs::OccupancyGrid &local_map);
 
-        void grow( nav_msgs::Odometry &global_vehicle_pose,
-                   iv_slam_ros_msgs::TraversibleArea &traversible_map);
-
         nav_msgs::OccupancyGrid getMap() const {return map_;}
         nav_msgs::Odometry getPositionInExploreMap() const {return vehicle_pose_in_explore_map_;}
 

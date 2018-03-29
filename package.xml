@@ -3,7 +3,7 @@
     <name>explore_large_map</name>
     <version>0.0.1</version>
     <description>explore_large_map</description>
-    <author email="todo@todo.com">todo</author>
+    <author email="zhouwk33@gmail.com">Kevin</author>
     <maintainer email="todo@todo.com">todo</maintainer>
     <!-- The export tag contains other, unspecified, tags -->
 
@@ -19,7 +19,6 @@
     <depend>nav_msgs</depend>
     <depend>tf</depend>
     <depend>visualization_msgs</depend>
-    <depend>map_ray_caster</depend>
 
 
 
