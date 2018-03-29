@@ -8,7 +8,7 @@
 #include <map_ray_caster/map_ray_caster.h>
 //#define OPENCV_SHOW
 
-#define NEW_LOCAL_MAP  // small size version of global map
+//#define NEW_LOCAL_MAP  // small size version of global map
 using namespace explore_global_map;
 
 nav_msgs::Odometry global_vehicle_pose;
@@ -124,6 +124,9 @@ void projectToVehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::Travers
             ps_global_odom.position.x -= vehicle_pos.pose.pose.position.x;
             ps_global_odom.position.y -= vehicle_pos.pose.pose.position.y;
 #endif
+            // clockwise ratate 90
+            counterClockwiseRotatePoint(0, 0, -M_PI_2, ps_global_odom.position.x, ps_global_odom.position.y);
+
             global_map_x = floor((ps_global_odom.position.x  - local_map.info.origin.position.x) / local_map.info.resolution);
             global_map_y = floor((ps_global_odom.position.y  - local_map.info.origin.position.y) / local_map.info.resolution);
             int index_in_global_map = global_map_y * local_map.info.width + global_map_x;
@@ -161,10 +164,10 @@ void projectToVehicle(nav_msgs::Odometry &vehicle_pos, iv_slam_ros_msgs::Travers
 void clearFarRegion() {
     int width = local_map.info.width;
     int height = local_map.info.height;
-    int clear_area_height_start = (vehicle_y_in_map + far_distance) / local_map.info.resolution;
-    for(int i = 0; i < width; i++) {
-        for(int j = clear_area_height_start; j < height; j++) {
-            int index =  j * width + i;
+    int clear_area_width_start = (vehicle_x_in_map + far_distance) / local_map.info.resolution;
+    for(int i = 0; i < height; i++) {
+        for(int j = clear_area_width_start; j < width; j++) {
+            int index =  i * width + j;
             local_map.data[index] = 0;  // clear
         }
     }
@@ -269,8 +272,8 @@ int main(int argc, char **argv) {
     double map_height;
     double map_resolution;
 
-    nh.param<double>("map_width", map_width, 50);
-    nh.param<double>("map_height", map_height, 125);
+    nh.param<double>("map_width", map_width, 125);
+    nh.param<double>("map_height", map_height, 50);
     nh.param<double>("vehicle_x_in_map", vehicle_x_in_map, 25);  //[m]
     nh.param<double>("vehicle_y_in_map", vehicle_y_in_map, 25);
     nh.param<double>("far_distance", far_distance, 50);
@@ -357,8 +360,8 @@ int main(int argc, char **argv) {
             marker.type = visualization_msgs::Marker::CUBE;
             marker.action = visualization_msgs::Marker::ADD;
 
-            marker.scale.x = 2.8;
-            marker.scale.y = 4.9;
+            marker.scale.x = 4.9;
+            marker.scale.y = 2.8;
             marker.scale.z = 2.0;
             marker.color.a = 0.3;
             marker.color.r = 1.0;

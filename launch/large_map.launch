@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <launch>
     <node pkg="explore_large_map" type="explore_large_map_node" name="explore_large_map_node" output="screen" >
-        <param name="map_width" type="double" value="100"/>
-        <param name="map_height" type="double" value="100" />
+        <param name="map_width" type="double" value="1000"/>
+        <param name="map_height" type="double" value="1000" />
         <param name="map_resolution" type="double" value="0.1" />
         <param name="unknown_value" type="int" value="0" />
     </node>
 
     <node pkg="explore_large_map" type="local_map_node" name="local_map_node" output="screen" >
-        <param name="map_width" type="double" value="50"/>
-        <param name="map_height" type="double" value="125" />
+        <param name="map_width" type="double" value="125"/>
+        <param name="map_height" type="double" value="50" />
         <param name="far_distance" type="double" value="50" />
         <param name="vehicle_x_in_map" type="double" value="25" />
         <param name="vehicle_y_in_map" type="double" value="25" />

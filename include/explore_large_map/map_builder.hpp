@@ -72,6 +72,24 @@ namespace explore_global_map {
         return msg;
     }
 
+    inline void counterClockwiseRotatePoint(double ref_x, double ref_y, double angle,
+                                            double &point_x, double &point_y) {
+        double s = sin(angle);
+        double c = cos(angle);
+
+        // translate point back to origin:
+        point_x -= ref_x;
+        point_y -= ref_y;
+
+        // rotate point
+        double xnew = point_x * c - point_y * s;
+        double ynew = point_x * s + point_y * c;
+
+        // translate point back:
+        point_x = xnew + ref_x;
+        point_y = ynew + ref_y;
+}
+
     class MapBuilder {
 
     public:

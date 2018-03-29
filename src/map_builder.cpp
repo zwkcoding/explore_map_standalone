@@ -21,9 +21,8 @@ namespace explore_global_map {
         map_.info.resolution = resolution;
         map_.info.origin.orientation.w = 1.0;  // "odom"
 
-//        map_.info.origin.position.x = -static_cast<double>(width) / 2 * resolution;
-//        map_.info.origin.position.y = -static_cast<double>(height) / 2 * resolution;
-//        map_.info.origin.orientation.w = 1.0;
+//        map_.info.origin.position.x = -width / 2;
+//        map_.info.origin.position.y = -height / 2;
 
         private_nh_.param<int>("unknown_value", unknown_value_, 0);
         map_.data.assign(map_.info.width * map_.info.height, unknown_value_);  // Fill with "unknown" occupancy.
@@ -89,7 +88,10 @@ namespace explore_global_map {
             // reverse yaw and roll sequence
             geometry_msgs::Quaternion msg;
             msg = adjustRPYConvention(tailored_submap.triD_submap_pose.orientation);
+
             tailored_submap.triD_submap_pose.orientation = msg;
+            ROS_INFO_THROTTLE(0.5, "submap position in abs_odom frame (%f[m], %f[m], %f[degree])", tailored_submap.triD_submap_pose.position.x,
+                              tailored_submap.triD_submap_pose.position.y, tf::getYaw(tailored_submap.triD_submap_pose.orientation) * 180 / M_PI);
             msg = adjustRPYConvention(global_vehicle_pose.pose.pose.orientation);
             global_vehicle_pose.pose.pose.orientation = msg;
 
@@ -275,6 +277,9 @@ namespace explore_global_map {
 //                        tf::poseTFToMsg(worldToMap(initial_global_vehicle_pos_) * ps, ps_global_odom);
 //                    }
 
+                    // clockwise ratate 90
+                    counterClockwiseRotatePoint(0, 0, -M_PI_2, ps_global_odom.position.x, ps_global_odom.position.y);
+
                     global_map_x = floor((ps_global_odom.position.x  - map_.info.origin.position.x) / map_.info.resolution);
                     global_map_y = floor((ps_global_odom.position.y  - map_.info.origin.position.y) / map_.info.resolution);
                     int index_in_global_map = global_map_y * map_.info.width + global_map_x;
@@ -424,8 +429,8 @@ namespace explore_global_map {
         marker.type = visualization_msgs::Marker::CUBE;
         marker.action = visualization_msgs::Marker::ADD;
 
-        marker.scale.x = 2.8;
-        marker.scale.y = 4.9;
+        marker.scale.x = 4.9;
+        marker.scale.y = 2.8;
         marker.scale.z = 2.0;
         marker.color.a = 0.3;
         marker.color.r = 0.0;
