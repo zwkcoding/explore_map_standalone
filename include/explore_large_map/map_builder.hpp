@@ -95,6 +95,9 @@ namespace explore_global_map {
     public:
         MapBuilder(double width, double height, double resolution);
 
+        void grow(nav_msgs::Odometry &global_vehicle_pose,
+                              nav_msgs::OccupancyGrid &local_map);
+
         void grow( nav_msgs::Odometry &global_vehicle_pose,
                    iv_slam_ros_msgs::TraversibleArea &traversible_map);
 
