@@ -4,6 +4,7 @@
 
 
 nav_msgs::Odometry global_vehicle_pose;
+nav_msgs::OccupancyGrid local_map;
 iv_slam_ros_msgs::TraversibleArea traversible_map;
 
 bool receive_vehicle_pose = false, receive_traversible_map = false;
@@ -45,11 +46,19 @@ void traversibleMapCallback(const iv_slam_ros_msgs::TraversibleArea &subed_msg){
     receive_traversible_map = true;
 }
 
+void localMapCall( const nav_msgs::OccupancyGridConstPtr &map) {
+    local_map = *map;
+
+    receive_traversible_map = true;
+}
+
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "explore_large_map_node");
     ros::NodeHandle nh("~");
-    ros::Subscriber publisher = nh.subscribe("/traversible_area_topic", 1, traversibleMapCallback);
+//    ros::Subscriber publisher = nh.subscribe("/traversible_area_topic", 1, traversibleMapCallback);
+    ros::Subscriber local_map_sub = nh.subscribe("/explore_entry_map", 1, localMapCall);
+
     ros::Subscriber vehicle_global_pose_sub = nh.subscribe("/vehicle_global_pose_topic",1,vehiclePoseCallback);
     ros::Publisher map_publisher = nh.advertise<nav_msgs::OccupancyGrid>("/global_map", 1, true);
     ros::Publisher current_position_in_explore_map_pub = nh.advertise<nav_msgs::Odometry>("/odom", 1, false);
@@ -73,7 +82,7 @@ int main(int argc, char **argv) {
         receive_vehicle_pose = receive_traversible_map = false;
         // build map
         auto start = std::chrono::system_clock::now();
-        map_builder.grow(global_vehicle_pose, traversible_map);
+        map_builder.grow(global_vehicle_pose, local_map);
         auto end = std::chrono::system_clock::now();
         auto msec = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
 //        std::cout << "global explore map build cost time msec :" << msec << "\n";

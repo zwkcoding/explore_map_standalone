@@ -68,7 +68,7 @@ Visualization Manager:
       Draw Behind: false
       Enabled: true
       Name: Map
-      Topic: /local_map
+      Topic: /explore_entry_map
       Unreliable: false
       Use Timestamp: false
       Value: true

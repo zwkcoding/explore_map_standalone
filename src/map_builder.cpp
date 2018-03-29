@@ -21,14 +21,117 @@ namespace explore_global_map {
         map_.info.resolution = resolution;
         map_.info.origin.orientation.w = 1.0;  // "odom"
 
-//        map_.info.origin.position.x = -width / 2;
-//        map_.info.origin.position.y = -height / 2;
+        map_.info.origin.position.x = -width / 2;
+        map_.info.origin.position.y = -height / 2;
 
         private_nh_.param<int>("unknown_value", unknown_value_, 0);
         map_.data.assign(map_.info.width * map_.info.height, unknown_value_);  // Fill with "unknown" occupancy.
 
         vehicle_footprint_pub_ = private_nh_.advertise<visualization_msgs::Marker>("footprint", 10, false);
     }
+
+    void MapBuilder::grow(nav_msgs::Odometry &global_vehicle_pose,
+                          nav_msgs::OccupancyGrid &local_map) {
+        // get abosolute x,y
+        geographic_to_grid(global_vehicle_pose.pose.pose.position.x, global_vehicle_pose.pose.pose.position.y);
+
+        if (!start_flag_) {
+            geometry_msgs::Quaternion msg;
+            msg = adjustRPYConvention(global_vehicle_pose.pose.pose.orientation);
+            global_vehicle_pose.pose.pose.orientation = msg;
+
+            tf::Quaternion q;
+            tf::quaternionMsgToTF(msg, q);
+            tf::Matrix3x3 m(q);
+            double roll, pitch, yaw;
+            m.getRPY(roll, pitch, yaw);
+            std::cout << "Roll: " << roll << ", Pitch: " << pitch << ", Yaw: " << yaw << std::endl;
+            // todo
+            if (fabs(pitch) < 0.1 && fabs(roll) < 0.1) {
+                initial_x_ = global_vehicle_pose.pose.pose.position.x;
+                initial_y_ = global_vehicle_pose.pose.pose.position.y;
+                global_vehicle_pose.pose.pose.position.x -= initial_x_;
+                global_vehicle_pose.pose.pose.position.y -= initial_y_;
+                start_flag_ = true;
+            } else {
+                ROS_WARN("current roll : %f, pitvh : %f ,Waiting for more flat position !", roll, pitch);
+            }
+        } else {
+            global_vehicle_pose.pose.pose.position.x = global_vehicle_pose.pose.pose.position.x - initial_x_;
+            global_vehicle_pose.pose.pose.position.y = global_vehicle_pose.pose.pose.position.y - initial_y_;
+
+            // reverse yaw and roll sequence
+            geometry_msgs::Quaternion msg;
+            msg = adjustRPYConvention(global_vehicle_pose.pose.pose.orientation);
+            global_vehicle_pose.pose.pose.orientation = msg;
+
+            ROS_INFO_THROTTLE(0.5, "vehicle position in odom frame (%f[m], %f[m], %f[degree])",
+                              global_vehicle_pose.pose.pose.position.x, global_vehicle_pose.pose.pose.position.y,
+                              tf::getYaw(global_vehicle_pose.pose.pose.orientation) * 180 / M_PI);
+
+            geometry_msgs::Pose abso_odom_vehicle_pose;
+            geometry_msgs::Pose base_odom_pose;
+            base_odom_pose.position.x = initial_x_;
+            base_odom_pose.position.y = initial_y_;
+            tf::quaternionTFToMsg(tf::createQuaternionFromYaw(0.0), base_odom_pose.orientation);
+            tf::Pose ps;
+            tf::poseMsgToTF(global_vehicle_pose.pose.pose, ps);
+            tf::poseTFToMsg(mapToWorld(base_odom_pose) * ps, abso_odom_vehicle_pose);
+            ROS_INFO_THROTTLE(0.5, "vehicle position in abs_odom frame (%f[m], %f[m], %f[degree])",
+                              abso_odom_vehicle_pose.position.x, abso_odom_vehicle_pose.position.y,
+                              tf::getYaw(abso_odom_vehicle_pose.orientation) * 180 / M_PI);
+            ROS_INFO_THROTTLE(0.5, "odom_base_x: %f[m], odom_base_y : %f[m]", initial_x_, initial_y_);
+            // publish marker in explore_map frame
+            publishFootPrint(global_vehicle_pose.pose.pose, "/odom");
+//            // broadcast tf tree between vehicle and explore map
+            broadcastTransformBetweenVehicleAndExploreMap(global_vehicle_pose.pose.pose);
+//            // broadcast tf tree betw explore map and odom
+            broadcastTransformBetweenExploreMapAndOdom();
+
+
+            // fill tailored submap cell value into odom global map
+            geometry_msgs::Point pt_local;
+            geometry_msgs::Point pt_global;
+
+//            auto start = std::chrono::system_clock::now();
+
+            tf::Transform all_trans;
+            all_trans = mapToWorld(global_vehicle_pose.pose.pose) * mapToWorld(local_map.info.origin) ;
+            for (int i = 0; i < local_map.info.height; i++) {
+                for (int j = 0; j < local_map.info.width; j++) {
+                    int index_in_local_map = i * local_map.info.width + j;
+                    // -->local_submap
+                    pt_local.x = j * local_map.info.resolution;
+                    pt_local.y = i * local_map.info.resolution;
+                    pt_local.z = 0;
+
+                    // -->global_submap
+                    {
+                        tf::Point pt;
+                        tf::pointMsgToTF(pt_local, pt);
+                        tf::pointTFToMsg(all_trans * pt, pt_global);
+                    }
+
+                    int global_map_x = floor((pt_global.x - map_.info.origin.position.x) / map_.info.resolution);
+                    int global_map_y = floor((pt_global.y - map_.info.origin.position.y) / map_.info.resolution);
+                    int index_in_global_map = global_map_y * map_.info.width + global_map_x;
+                    if (global_map_x > 0 && global_map_x < map_.info.width && global_map_y > 0 &&
+                        global_map_y < map_.info.height) {
+
+                        if (local_map.data[index_in_local_map] == 0) {
+                            map_.data[index_in_global_map] = 0;
+                        } else if (local_map.data[index_in_local_map] == 100) {
+                            map_.data[index_in_global_map] = 100;
+                        } else {
+                            // todo only consider obs and free, ignore unknwon cell
+//                            map_.data[index_in_global_map] = -1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 
     void MapBuilder::grow(nav_msgs::Odometry &global_vehicle_pose,
                           iv_slam_ros_msgs::TraversibleArea &traversible_map) {
