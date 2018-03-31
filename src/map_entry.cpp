@@ -13,8 +13,17 @@
 #include "Eigen/Geometry"
 #include "explore_large_map/transform.h"
 
+#include <chrono>
+#include <opencv2/opencv.hpp>  // A simple CHEAT cause it includes everything
+//#include <opencv2/core/core.hpp>
+//#include <opencv2/imgproc/imgproc.hpp>
+//#include <opencv2/highgui/highgui.hpp>
+
 #include <nav_msgs/OccupancyGrid.h>
 
+#define PRE_DILATE
+
+using namespace cv;
 nav_msgs::OccupancyGrid local_map;
 nav_msgs::Odometry received_tem_global_vehicle_pose;
 iv_slam_ros_msgs::TraversibleArea TwiDTraversibleArea;
@@ -68,7 +77,44 @@ void testcallback(const iv_slam_ros_msgs::TraversibleArea &subed_msg) {
 
     TwiDTraversibleArea.width = subed_msg.width;
     TwiDTraversibleArea.height = subed_msg.height;
+
     TwiDTraversibleArea.cells.assign(subed_msg.cells.begin(), subed_msg.cells.end());
+
+#ifdef PRE_DILATE
+    if(subed_msg.cells.size() == subed_msg.width * subed_msg.height) // check that the rows and cols match the size of your vector
+    {
+//        auto start = std::chrono::system_clock::now();
+
+        Mat m = Mat(subed_msg.height, subed_msg.width, CV_8UC1); // initialize matrix of uchar of 1-channel where you will store vec data
+        //copy vector to mat
+        memcpy(m.data, subed_msg.cells.data(), subed_msg.cells.size()*sizeof(uint8_t));
+
+        Mat m0;
+        m.copyTo(m0);
+        m0.setTo(Scalar(0), m != 2);
+        m0.setTo(Scalar(255), m == 2);
+//        imshow("source",m0);
+
+        dilate(m0, m0, Mat(), Point(-1, -1), 1, 1, 1);
+//        imshow("dilate",m0);
+
+        for(int i = 0; i < m0.rows; ++i) {
+            unsigned char* row = m0.ptr<unsigned char>(i);
+            for(int j = 0; j < m.cols; j++) {
+                int index = i * m.cols + j;
+               if(255 == row[j]) {
+                   TwiDTraversibleArea.cells[index] = 2; // obs
+               }
+            }
+        }
+
+//        auto end = std::chrono::system_clock::now();
+//        auto msec = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
+//        ROS_INFO_STREAM_THROTTLE(0.5,"dilate image cost time [msec] :" << msec);
+
+        waitKey(1);
+    }
+#endif
 }
 
 
@@ -92,9 +138,12 @@ int main(int argc, char **argv) {
     double map_height;
     double map_resolution;
     std::string map_frame_name;
+    int unknown_cell_value;
     nh.param<double>("map_width", map_width, 100);
     nh.param<double>("map_height", map_height, 60);
     nh.param<double>("local_map_resolution", map_resolution, 0.2);
+    nh.param<int>("unknown_cell_value", unknown_cell_value, -1);
+
     nh.param<std::string>("local_map_frame_name", map_frame_name, "base_link");
 
     local_map.header.frame_id = map_frame_name;
@@ -104,10 +153,11 @@ int main(int argc, char **argv) {
     local_map.info.origin.position.x = -map_width / 2;
     local_map.info.origin.position.y = -map_height / 2;
     local_map.info.origin.orientation.w = 1.0;
-    local_map.data.assign(local_map.info.width * local_map.info.height, 0);  // Fill with free occupancy.
+    local_map.data.assign(local_map.info.width * local_map.info.height, unknown_cell_value);  // Fill with unknown occupancy.
 
     while (ros::ok()) {
-        local_map.data.assign(local_map.info.width * local_map.info.height, 0);  // Fill with free occupancy.
+        // reset local_map with unknown value
+        local_map.data.assign(local_map.info.width * local_map.info.height, unknown_cell_value);  // Fill with unknown occupancy.
 
         if (TwiDTraversibleArea.width == 0 && TwiDTraversibleArea.height == 0) {
 
@@ -206,7 +256,7 @@ int main(int argc, char **argv) {
                     }
 
 
-                } else if (0/*TwiDTraversibleArea.cells.at(data_index)==1*/) {
+                } else if (TwiDTraversibleArea.cells.at(data_index)==1) {
 
                     cartographer::transform::Rigid3d tem_pose(Eigen::Vector3d(
                             ((data_index % testimage->width - TwiDTraversibleArea.triD_submap_pose_image_index_x) *
@@ -231,6 +281,22 @@ int main(int argc, char **argv) {
                         pdata[1] = 254;
                         pdata[2] = 0;
                     }
+
+                    double rel_x = (global_vehicle_pose.inverse() * global_pose).translation().x();
+                    double rel_y = (global_vehicle_pose.inverse() * global_pose).translation().y();
+
+                    // clockwise rotate viewpoint, consistent with ros convention
+                    counterClockwiseRotatePoint(0, 0, -M_PI_2, rel_x, rel_y);
+
+                    int ind_x = floor((rel_x - local_map.info.origin.position.x) / local_map.info.resolution);
+                    int ind_y = floor((rel_y - local_map.info.origin.position.y) / local_map.info.resolution);
+
+                    if (ind_x > 0 && ind_x < local_map.info.width && ind_y > 0 && ind_y < local_map.info.height) {
+                        int index_in_global_map = ind_y * local_map.info.width + ind_x;
+
+                        local_map.data[index_in_global_map] = 0;
+                    }
+
                 }
                 data_index++;
             }

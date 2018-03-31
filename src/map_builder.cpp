@@ -9,6 +9,7 @@
 namespace explore_global_map {
 
     explore_global_map::MapBuilder::MapBuilder(double width, double height, double resolution) :
+            private_nh_("~"),
             global_map_height_(height),
             global_map_width_(width),
             start_flag_(false),
@@ -24,7 +25,7 @@ namespace explore_global_map {
         map_.info.origin.position.x = -width / 2;
         map_.info.origin.position.y = -height / 2;
 
-        private_nh_.param<int>("unknown_value", unknown_value_, 0);
+        private_nh_.param<int>("unknown_value", unknown_value_, -1);
         map_.data.assign(map_.info.width * map_.info.height, unknown_value_);  // Fill with "unknown" occupancy.
 
         vehicle_footprint_pub_ = private_nh_.advertise<visualization_msgs::Marker>("footprint", 10, false);
@@ -118,12 +119,14 @@ namespace explore_global_map {
                     if (global_map_x > 0 && global_map_x < map_.info.width && global_map_y > 0 &&
                         global_map_y < map_.info.height) {
 
+                        // todo use bayes inference
                        if (local_map.data[index_in_local_map] == 100) {
                             map_.data[index_in_global_map] = 100;
-                        } else {
-                            // todo only consider obs and free, ignore unknwon cell
+                        } else if(local_map.data[index_in_local_map] == 0){
+                           // when view unknown cell is free, this free cells assignement are error!!!
+                           map_.data[index_in_global_map] = 0;
+                        } // only consider obs and free, ignore unknwon cell cover
 //                            map_.data[index_in_global_map] = -1;
-                        }
                     }
                 }
             }
