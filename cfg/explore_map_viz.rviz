@@ -4,6 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /Global Options1
         - /Pose1
       Splitter Ratio: 0.5
     Tree Height: 747
@@ -180,7 +181,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 2.60499978
+      Angle: 1.4350003
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
@@ -212,5 +213,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1867
-  X: 126
-  Y: 45
+  X: 396
+  Y: 42

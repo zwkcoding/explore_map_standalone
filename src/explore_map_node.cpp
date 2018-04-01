@@ -62,7 +62,11 @@ void goalPoseCallback (const geometry_msgs::PoseStampedConstPtr &msg)
 
     ROS_INFO("Subcscribed goal pose!");
     double yaw = tf::getYaw(msg->pose.orientation);
-    ROS_INFO("goal cell [in global_map coord]: [%f[m], %f[m], %f[degree]]", msg->pose.position.x, msg->pose.position.y, yaw * 180 / M_PI);
+//    for(int i = 0; i < 20; i++) {
+//        ROS_INFO_STREAM("goal frame is in :" <<  msg->header.frame_id);
+//        ROS_INFO("goal cell [in global_map coord]: [%f[m], %f[m], %f[degree]]", msg->pose.position.x,
+//                 msg->pose.position.y, yaw * 180 / M_PI);
+//    }
 
     global_goal_pose = *msg;
     goal_flag = true;
@@ -90,6 +94,10 @@ void global2Vehicle (const tf::TransformListener &tf_listner,
     geometry_msgs::Pose msg_pose = global_pose.pose;
     local_pose.pose   = transformPose(msg_pose, vehicle2world);
     local_pose.header.stamp = ros::Time::now();
+
+    double yaw = tf::getYaw(local_pose.pose.orientation);
+    ROS_INFO_THROTTLE(1, "goal cell [in local_map coord]: [%f[m], %f[m], %f[degree]]",local_pose.pose.position.x, local_pose.pose.position.y, yaw * 180 / M_PI);
+
 }
 
 // todo push these into a class, wrapper
@@ -184,8 +192,8 @@ int main(int argc, char **argv) {
 
 
         // reset goal flag and no publisher, waiting new goal pose input
-        if(std::hypot(global_goal_pose.pose.position.x - global_vehicle_pose.pose.pose.position.x,
-                      global_goal_pose.pose.position.y - global_vehicle_pose.pose.pose.position.y) < reach_goal_distance) {
+        if(std::hypot(global_goal_pose.pose.position.x - odom_global_vehicle_pose.pose.pose.position.x,
+                      global_goal_pose.pose.position.y - odom_global_vehicle_pose.pose.pose.position.y) < reach_goal_distance) {
             goal_flag = false;
         }
         if(goal_flag) {

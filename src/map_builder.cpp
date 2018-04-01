@@ -62,6 +62,7 @@ namespace explore_global_map {
                 initial_y_ = vehicle_pose_in_odom_map_.pose.pose.position.y;
                 vehicle_pose_in_odom_map_.pose.pose.position.x -= initial_x_;
                 vehicle_pose_in_odom_map_.pose.pose.position.y -= initial_y_;
+                vehicle_pose_in_odom_map_.pose.pose.position.z = 0;
                 start_flag_ = true;
             } else {
                 ROS_WARN("current roll : %f, pitvh : %f ,Waiting for more flat position !", roll, pitch);
@@ -69,6 +70,7 @@ namespace explore_global_map {
         } else {
             vehicle_pose_in_odom_map_.pose.pose.position.x = vehicle_pose_in_odom_map_.pose.pose.position.x - initial_x_;
             vehicle_pose_in_odom_map_.pose.pose.position.y = vehicle_pose_in_odom_map_.pose.pose.position.y - initial_y_;
+            vehicle_pose_in_odom_map_.pose.pose.position.z = 0;
 
             // reverse yaw and roll sequence
             geometry_msgs::Quaternion msg;
@@ -201,7 +203,7 @@ namespace explore_global_map {
     void MapBuilder::broadcastTransformBetweenVehicleAndExploreMap(geometry_msgs::Pose &current_pose) {
         tf::Transform transform;
         transform.setOrigin(tf::Vector3(current_pose.position.x,
-                                        current_pose.position.y, current_pose.position.z));
+                                        current_pose.position.y, 0));
         tf::Quaternion q;
         tf::quaternionMsgToTF(current_pose.orientation, q);
         transform.setRotation(q);
