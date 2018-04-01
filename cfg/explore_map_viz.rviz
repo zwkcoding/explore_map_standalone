@@ -4,13 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
-        - /Status1
-        - /Grid1
-        - /Map1
-        - /Map2
-        - /Marker1
-        - /Odometry1
+        - /Pose1
       Splitter Ratio: 0.5
     Tree Height: 747
   - Class: rviz/Selection
@@ -69,16 +63,26 @@ Visualization Manager:
       Draw Behind: false
       Enabled: false
       Name: Map
-      Topic: /explore_entry_map
+      Topic: /cover_map
       Unreliable: false
       Use Timestamp: false
       Value: false
+    - Alpha: 0.699999988
+      Class: rviz/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic: /explore_entry_map
+      Unreliable: false
+      Use Timestamp: false
+      Value: true
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /explore_large_map_node/footprint
+      Marker Topic: /footprint_in_local_map
       Name: Marker
       Namespaces:
-        global_map/footprint: true
+        vehicle_body: true
       Queue Size: 100
       Value: true
     - Angle Tolerance: 0.100000001
@@ -115,16 +119,44 @@ Visualization Manager:
       Topic: /odom
       Unreliable: false
       Value: true
-    - Alpha: 0.699999988
-      Class: rviz/Map
-      Color Scheme: map
-      Draw Behind: false
-      Enabled: false
-      Name: Map
-      Topic: /cover_map
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 25; 255; 0
+      Enabled: true
+      Head Diameter: 0.300000012
+      Head Length: 0.200000003
+      Length: 0.300000012
+      Line Style: Lines
+      Line Width: 0.0299999993
+      Name: Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.0299999993
+      Shaft Diameter: 0.100000001
+      Shaft Length: 0.100000001
+      Topic: /astar_planner/global_path_show
       Unreliable: false
-      Use Timestamp: false
-      Value: false
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.100000001
+      Class: rviz/Pose
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.600000024
+      Head Radius: 0.5
+      Name: Pose
+      Shaft Length: 2
+      Shaft Radius: 0.100000001
+      Shape: Arrow
+      Topic: /move_base_simple/goal
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -148,7 +180,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 0.00499999989
+      Angle: 2.60499978
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
@@ -158,11 +190,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 8.42528725
+      Scale: 13.6606903
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 0
-      Y: 0
+      X: -18.9008179
+      Y: -9.34820938
     Saved: ~
 Window Geometry:
   Displays:
@@ -180,5 +212,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1867
-  X: 53
-  Y: 26
+  X: 126
+  Y: 45

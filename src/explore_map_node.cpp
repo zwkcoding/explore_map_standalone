@@ -5,13 +5,17 @@
 
 nav_msgs::Odometry global_vehicle_pose;
 nav_msgs::OccupancyGrid local_map;
-iv_slam_ros_msgs::TraversibleArea traversible_map;
-
-geometry_msgs::PoseStamped local_goal_pose;
 geometry_msgs::PoseStamped global_goal_pose;
 
+ros::WallTime last_receive_map_timestamp_;
+ros::WallTime last_receive_position_timestamp_;
+
 bool receive_vehicle_pose = false, receive_traversible_map = false, goal_flag = false;
+
 void vehiclePoseCallback(const nav_msgs::Odometry &sub_tem_global_vehicle_pose){
+    receive_vehicle_pose = true;
+    last_receive_map_timestamp_ = ros::WallTime::now();  // tick time
+
     global_vehicle_pose.header.stamp = sub_tem_global_vehicle_pose.header.stamp;
     global_vehicle_pose.header.frame_id = sub_tem_global_vehicle_pose.header.frame_id;
     global_vehicle_pose.pose.pose.position.x = sub_tem_global_vehicle_pose.pose.pose.position.x;//longitude of the current UGV positon
@@ -22,13 +26,14 @@ void vehiclePoseCallback(const nav_msgs::Odometry &sub_tem_global_vehicle_pose){
     global_vehicle_pose.pose.pose.orientation.y = sub_tem_global_vehicle_pose.pose.pose.orientation.y;
     global_vehicle_pose.pose.pose.orientation.z = sub_tem_global_vehicle_pose.pose.pose.orientation.z;
 
-    receive_vehicle_pose = true;
 }
 
 void localMapCall( const nav_msgs::OccupancyGridConstPtr &map) {
+    receive_traversible_map = true;
+    last_receive_position_timestamp_ = ros::WallTime::now();  // tick time
+
     local_map = *map;
 
-    receive_traversible_map = true;
 }
 
 geometry_msgs::Pose transformPose(geometry_msgs::Pose &pose, tf::Transform &tf){
@@ -66,8 +71,7 @@ void goalPoseCallback (const geometry_msgs::PoseStampedConstPtr &msg)
 void global2Vehicle (const tf::TransformListener &tf_listner,
                      const geometry_msgs::PoseStamped &global_pose,
                      geometry_msgs::PoseStamped &local_pose) {
-    // TODO: what frame do we use?
-    std::string local_frame  = "base_link";
+    std::string local_frame  = local_pose.header.frame_id;
     std::string goal_frame  = global_pose.header.frame_id;
 
     // Get transform (map to world in Autoware)
@@ -85,64 +89,108 @@ void global2Vehicle (const tf::TransformListener &tf_listner,
     // Set pose in Global frame
     geometry_msgs::Pose msg_pose = global_pose.pose;
     local_pose.pose   = transformPose(msg_pose, vehicle2world);
-    local_pose.header.frame_id = local_frame;
     local_pose.header.stamp = ros::Time::now();
+}
+
+// todo push these into a class, wrapper
+void resetFLag() {
+    ros::WallTime end = ros::WallTime::now();
+    double map_elapse_time = (end - last_receive_map_timestamp_).toSec() * 1000;
+    double position_elapse_time = (end - last_receive_position_timestamp_).toSec() * 1000;
+    if(map_elapse_time < 1000) {
+        receive_traversible_map   = true;
+    } else {
+        receive_traversible_map   = false;
+        ROS_ERROR("Receive local map delay exceed time!");
+    }
+    if(position_elapse_time < 1000) {
+        receive_vehicle_pose = true;
+    }else {
+        receive_vehicle_pose   = false;
+        ROS_ERROR("Receive vehicle position delay exceed time!");
+    }
+
 }
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "explore_large_map_node");
     ros::NodeHandle nh("~");
-
-    ros::Subscriber local_map_sub = nh.subscribe("/explore_entry_map", 1, localMapCall);
-    ros::Subscriber vehicle_global_pose_sub = nh.subscribe("/vehicle_global_pose_topic",1,vehiclePoseCallback);
-    ros::Subscriber goal_pose_sub = nh.subscribe("/move_base_simple/goal",1,goalPoseCallback);
-    ros::Publisher map_publisher = nh.advertise<nav_msgs::OccupancyGrid>("/global_map", 1, true);
-    ros::Publisher current_position_in_explore_map_pub = nh.advertise<nav_msgs::Odometry>("/odom", 1, false);
-    ros::Publisher local_goal_pub = nh.advertise<geometry_msgs::PoseStamped>("/local_search_goal", 1, false);
+    ros::NodeHandle n;
 
     double map_width;
     double map_height;
     double map_resolution;
-
+    double reach_goal_distance;
+    std::string re_vehicle_global_position_topic_name, re_local_map_topic_name, local_map_frame_name;
+    std::string re_goal_pose_topic_name, se_vehicle_pose_in_odom_topic_name, se_vehicle_pose_in_odom_topic_frame_name;
+    std::string se_global_map_topic_name;
+    std::string se_local_goal_topic_name;
     nh.param<double>("map_width", map_width, 100);
     nh.param<double>("map_height", map_height, 100);
     nh.param<double>("map_resolution", map_resolution, 0.1);
+    nh.param<double>("reach_goal_distance", reach_goal_distance, 0.5);
+
+    nh.param<std::string>("receive_local_map_topic_name", re_local_map_topic_name, "/explore_entry_map");
+    nh.param<std::string>("receive_vehicle_global_position_topic_name", re_vehicle_global_position_topic_name, "/vehicle_global_pose_topic");
+    nh.param<std::string>("receive_goal_pose_topic_name", re_goal_pose_topic_name, "/move_base_simple/goal");
+    nh.param<std::string>("send_vehicle_pose_in_odom_topic_name", se_vehicle_pose_in_odom_topic_name, "/odom");
+    nh.param<std::string>("send_vehicle_pose_in_odom_topic_frame_name", se_vehicle_pose_in_odom_topic_frame_name, "/odom");
+
+    nh.param<std::string>("send_global_map_topic_name", se_global_map_topic_name, "/global_map");
+    nh.param<std::string>("send_local_goal_topic_name", se_local_goal_topic_name, "/local_search_goal");
+
+    nh.param<std::string>("local_map_frame_name", local_map_frame_name, "base_link");
+
+
+    ros::Subscriber local_map_sub = n.subscribe(re_local_map_topic_name, 1, localMapCall);
+    ros::Subscriber vehicle_global_pose_sub = n.subscribe(re_vehicle_global_position_topic_name,1,vehiclePoseCallback);
+    ros::Subscriber goal_pose_sub = n.subscribe(re_goal_pose_topic_name,1,goalPoseCallback);
+    ros::Publisher map_publisher = n.advertise<nav_msgs::OccupancyGrid>(se_global_map_topic_name, 1, false);
+    ros::Publisher current_position_in_explore_map_pub = n.advertise<nav_msgs::Odometry>(se_vehicle_pose_in_odom_topic_name, 1, false);
+    ros::Publisher local_goal_pub = n.advertise<geometry_msgs::PoseStamped>(se_local_goal_topic_name, 1, false);
 
     tf::TransformListener tf_listener;
+    geometry_msgs::PoseStamped local_goal_pose;
+    local_goal_pose.header.frame_id = local_map_frame_name;
 
     explore_global_map::MapBuilder map_builder(map_width, map_height, map_resolution);
 
-    ros::Rate rate(10.0);
+    ros::Rate rate(100.0);
     while (nh.ok()) {
+        ros::spinOnce();
+
         // wait for msg
-        while(!receive_vehicle_pose || !receive_traversible_map) {
-            ros::spinOnce();
+        if(!receive_vehicle_pose || !receive_traversible_map) {
             rate.sleep();
+            continue;
         }
         // reset flag
-        receive_vehicle_pose = receive_traversible_map = false;
+        resetFLag();
+
         // build map
         auto start = std::chrono::system_clock::now();
         map_builder.grow(global_vehicle_pose, local_map);
         auto end = std::chrono::system_clock::now();
         auto msec = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
-        ROS_INFO_STREAM_THROTTLE(0.5,"global explore map build cost time [msec] :" << msec);
+        ROS_INFO_STREAM_THROTTLE(3,"global explore map build cost time [msec] :" << msec);
         map_publisher.publish(map_builder.getMap());
+
         nav_msgs::Odometry odom_global_vehicle_pose;
-        odom_global_vehicle_pose = global_vehicle_pose;
-        odom_global_vehicle_pose.header.frame_id = "/odom";
+        // fixit global_vehicle_pose is in /odom frame , not /abso_odom frame
+        odom_global_vehicle_pose = map_builder.getPositionInOdomMap();
+        odom_global_vehicle_pose.header.frame_id = se_vehicle_pose_in_odom_topic_frame_name;
         odom_global_vehicle_pose.header.stamp = ros::Time::now();
         current_position_in_explore_map_pub.publish(odom_global_vehicle_pose);
 
-        if(goal_flag) {
-            global2Vehicle(tf_listener, global_goal_pose, local_goal_pose); // update local goal pose
-            local_goal_pub.publish(local_goal_pose);
-        }
 
         // reset goal flag and no publisher, waiting new goal pose input
         if(std::hypot(global_goal_pose.pose.position.x - global_vehicle_pose.pose.pose.position.x,
-                      global_goal_pose.pose.position.y - global_vehicle_pose.pose.pose.position.y) < 1.0) {
+                      global_goal_pose.pose.position.y - global_vehicle_pose.pose.pose.position.y) < reach_goal_distance) {
             goal_flag = false;
+        }
+        if(goal_flag) {
+            global2Vehicle(tf_listener, global_goal_pose, local_goal_pose); // update local goal pose
+            local_goal_pub.publish(local_goal_pose);
         }
 
         ros::spinOnce();

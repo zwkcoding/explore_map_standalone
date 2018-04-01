@@ -95,11 +95,11 @@ namespace explore_global_map {
     public:
         MapBuilder(double width, double height, double resolution);
 
-        void grow(nav_msgs::Odometry &global_vehicle_pose,
-                              nav_msgs::OccupancyGrid &local_map);
+        void grow(const nav_msgs::Odometry &vehicle_pose,
+                  const nav_msgs::OccupancyGrid &local_map);
 
         nav_msgs::OccupancyGrid getMap() const {return map_;}
-        nav_msgs::Odometry getPositionInExploreMap() const {return vehicle_pose_in_explore_map_;}
+        nav_msgs::Odometry getPositionInOdomMap() const {return vehicle_pose_in_odom_map_;}
 
     private:
 
@@ -121,7 +121,7 @@ namespace explore_global_map {
         geometry_msgs::Pose initial_vehicle_pos_in_odom;
         geometry_msgs::Pose initial_vehicle_pos_in_explore_map;
         geometry_msgs::Pose current_odom_vehicle_pos_;
-        nav_msgs::Odometry vehicle_pose_in_explore_map_;
+        nav_msgs::Odometry vehicle_pose_in_odom_map_;
         tf::TransformBroadcaster br_;
 
         nav_msgs::OccupancyGrid map_; //!< local map with fixed orientation
@@ -130,6 +130,7 @@ namespace explore_global_map {
         ros::Publisher vehicle_footprint_pub_;
 
         int unknown_value_;
+        std::string global_map_frame_name_, local_map_frame_name_, abso_global_map_frame_name_;
 
 
 
