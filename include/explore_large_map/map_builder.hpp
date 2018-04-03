@@ -132,6 +132,8 @@ namespace explore_global_map {
         int unknown_value_;
         std::string global_map_frame_name_, local_map_frame_name_, abso_global_map_frame_name_;
 
+        double border_thickness_;
+
 
 
 

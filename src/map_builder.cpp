@@ -24,6 +24,8 @@ namespace explore_global_map {
         private_nh_.param<std::string>("local_map_frame_name", local_map_frame_name_, "base_link");
         private_nh_.param<std::string>("abso_global_map_frame_name", abso_global_map_frame_name_, "/abso_odom");
 
+        private_nh_.param<double>("border_thickness", border_thickness_, 2);
+
         map_.header.frame_id = global_map_frame_name_;
         map_.info.width = static_cast<int> (width / resolution);
         map_.info.height = static_cast<int> (height / resolution);
@@ -138,6 +140,25 @@ namespace explore_global_map {
                            map_.data[index_in_global_map] = 0;
                         } // only consider obs and free, ignore unknwon cell cover
 //                            map_.data[index_in_global_map] = -1;
+                    }
+                }
+            }
+          
+           // black border
+            int thickness = static_cast<int>(border_thickness_ / map_.info.resolution);
+            for (size_t y = 0; y < map_.info.height; y++) {
+                if (y < thickness || y >= map_.info.height - thickness) {
+                    for (size_t x = 0; x < map_.info.width; x++) {
+                        unsigned int index = y * map_.info.width + x;
+                        map_.data[index] = 100;  // black border
+                    }
+                    continue;
+                }
+                for (size_t x = 0; x < map_.info.width; x++) {
+                    unsigned int index = y * map_.info.width + x;
+                    if (x < thickness || x >= map_.info.width - thickness) {
+                        map_.data[index] = 100;
+                        continue;
                     }
                 }
             }
