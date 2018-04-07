@@ -5,8 +5,15 @@
 #include "explore_large_map/map_builder.hpp"
 
 //#define OPENCV_SHOW
+#define BayesUpdate
 
 namespace explore_global_map {
+
+    const double g_default_p_occupied_when_laser = 0.9;
+    const double g_default_p_occupied_when_no_laser = 0.3;
+    const double g_default_large_log_odds = 100;
+    const double g_default_max_log_odds_for_belief = 20;
+
 
     explore_global_map::MapBuilder::MapBuilder(double width, double height, double resolution) :
             private_nh_("~"),
@@ -16,6 +23,10 @@ namespace explore_global_map {
             local_map_frame_name_("base_link"),
             abso_global_map_frame_name_("/abso_odom"),
             start_flag_(false),
+            p_occupied_when_laser_(g_default_p_occupied_when_laser),
+            p_occupied_when_no_laser_(g_default_p_occupied_when_no_laser),
+            large_log_odds_(g_default_large_log_odds),
+            max_log_odds_for_belief_(g_default_max_log_odds_for_belief),
       tailored_submap_width_(50),
       tailored_submap_height_(75),
       tailored_submap_x2base_(25) {
@@ -25,6 +36,41 @@ namespace explore_global_map {
         private_nh_.param<std::string>("abso_global_map_frame_name", abso_global_map_frame_name_, "/abso_odom");
 
         private_nh_.param<double>("border_thickness", border_thickness_, 2);
+
+        private_nh_.getParam("p_occupied_when_laser", p_occupied_when_laser_);
+        if (p_occupied_when_laser_ <=0 || p_occupied_when_laser_ >= 1)
+        {
+            ROS_ERROR_STREAM("Parameter "<< private_nh_.getNamespace() <<
+                                         "/p_occupied_when_laser must be within ]0, 1[, setting to default (" <<
+                                         g_default_p_occupied_when_laser << ")");
+            p_occupied_when_laser_ = g_default_p_occupied_when_laser;
+        }
+        private_nh_.getParam("p_occupied_when_no_laser", p_occupied_when_no_laser_);
+        if (p_occupied_when_no_laser_ <=0 || p_occupied_when_no_laser_ >= 1)
+        {
+            ROS_ERROR_STREAM("Parameter "<< private_nh_.getNamespace() <<
+                                         "/p_occupied_when_no_laser must be within ]0, 1[, setting to default (" <<
+                                         g_default_p_occupied_when_no_laser << ")");
+            p_occupied_when_no_laser_ = g_default_p_occupied_when_no_laser;
+        }
+        private_nh_.getParam("large_log_odds", large_log_odds_);
+        if (large_log_odds_ <=0)
+        {
+            ROS_ERROR_STREAM("Parameter "<< private_nh_.getNamespace() << "/large_log_odds must be positive, setting to default (" <<
+                                         g_default_large_log_odds << ")");
+            large_log_odds_ = g_default_large_log_odds;
+        }
+        private_nh_.getParam("max_log_odds_for_belief", max_log_odds_for_belief_);
+        try
+        {
+            std::exp(max_log_odds_for_belief_);
+        }
+        catch (std::exception)
+        {
+            ROS_ERROR_STREAM("Parameter "<< private_nh_.getNamespace() << "/max_log_odds_for_belief too large, setting to default (" <<
+                                         g_default_max_log_odds_for_belief << ")");
+            max_log_odds_for_belief_ = g_default_max_log_odds_for_belief;
+        }
 
         map_.header.frame_id = global_map_frame_name_;
         map_.info.width = static_cast<int> (width / resolution);
@@ -37,6 +83,10 @@ namespace explore_global_map {
 
         private_nh_.param<int>("unknown_value", unknown_value_, -1);
         map_.data.assign(map_.info.width * map_.info.height, unknown_value_);  // Fill with "unknown" occupancy.
+
+        // log_odds = log(occupancy / (1 - occupancy); prefill with
+        // occupancy = 0.5, equiprobability between occupied and free.
+        log_odds_.assign(map_.info.width * map_.info.height, 0);
 
         vehicle_footprint_pub_ = private_nh_.advertise<visualization_msgs::Marker>("/vehicle_in_global", 10, false);
     }
@@ -64,7 +114,7 @@ namespace explore_global_map {
                 initial_y_ = vehicle_pose_in_odom_map_.pose.pose.position.y;
                 vehicle_pose_in_odom_map_.pose.pose.position.x -= initial_x_;
                 vehicle_pose_in_odom_map_.pose.pose.position.y -= initial_y_;
-                vehicle_pose_in_odom_map_.pose.pose.position.z = 0;
+                vehicle_pose_in_odom_map_.pose.pose.position.z = 0;  // set to 0
                 start_flag_ = true;
             } else {
                 ROS_WARN("current roll : %f, pitvh : %f ,Waiting for more flat position !", roll, pitch);
@@ -72,7 +122,7 @@ namespace explore_global_map {
         } else {
             vehicle_pose_in_odom_map_.pose.pose.position.x = vehicle_pose_in_odom_map_.pose.pose.position.x - initial_x_;
             vehicle_pose_in_odom_map_.pose.pose.position.y = vehicle_pose_in_odom_map_.pose.pose.position.y - initial_y_;
-            vehicle_pose_in_odom_map_.pose.pose.position.z = 0;
+            vehicle_pose_in_odom_map_.pose.pose.position.z = 0;  // set to 0
 
             // reverse yaw and roll sequence
             geometry_msgs::Quaternion msg;
@@ -134,10 +184,20 @@ namespace explore_global_map {
 
                         // todo use bayes inference
                        if (local_map.data[index_in_local_map] == 100) {
+#ifdef BayesUpdate
+                           updatePointOccupancy(true, true, index_in_global_map, map_.data, log_odds_);
+#else
                             map_.data[index_in_global_map] = 100;
+#endif
+
                         } else if(local_map.data[index_in_local_map] == 0){
+#ifdef BayesUpdate
+                           updatePointOccupancy(true, false, index_in_global_map, map_.data, log_odds_);
+#else
                            // when view unknown cell is free, this free cells assignement are error!!!
                            map_.data[index_in_global_map] = 0;
+#endif
+
                         } // only consider obs and free, ignore unknwon cell cover
 //                            map_.data[index_in_global_map] = -1;
                     }
@@ -164,6 +224,75 @@ namespace explore_global_map {
             }
         }
     }
+
+    /** Update occupancy and log odds for a point
+ *
+ * @param[in] use_bayes true if consider error of sensor
+ * @param[in] occupied true if the point was measured as occupied
+ * @param[in] idx pixel index
+ * @param[in] ncol map width
+ * @param[in,out] occupancy occupancy map to update
+ * @param[in,out] log_odds log odds to update
+ */
+    void MapBuilder::updatePointOccupancy(bool use_bayes, bool occupied, size_t idx, std::vector<int8_t>& occupancy,
+                                          std::vector<double>& log_odds) const  {
+        if (idx >= occupancy.size())
+        {
+            return;
+        }
+
+        if (occupancy.size() != log_odds.size())
+        {
+            ROS_ERROR("occupancy and count do not have the same number of elements");
+            return;
+        }
+        if(use_bayes) {
+            // Update log_odds.
+            double p;  // Probability of being occupied knowing current measurement.
+            if (occupied) {
+                p = p_occupied_when_laser_;
+            } else {
+                p = p_occupied_when_no_laser_;
+            }
+            // Original formula: Table 4.2, "Probabilistics robotics", Thrun et al., 2005:
+            // log_odds[idx] = log_odds[idx] +
+            //     std::log(p * (1 - p_occupancy) / (1 - p) / p_occupancy);
+            // With p_occupancy = 0.5, this simplifies to:
+            log_odds[idx] += std::log(p / (1 - p));
+            if (log_odds[idx] < -large_log_odds_) {
+                log_odds[idx] = -large_log_odds_;
+            } else if (log_odds[idx] > large_log_odds_) {
+                log_odds[idx] = large_log_odds_;
+            }
+            // Update occupancy.
+            if (log_odds[idx] < -max_log_odds_for_belief_) {
+                occupancy[idx] = 0;
+            } else if (log_odds[idx] > max_log_odds_for_belief_) {
+                occupancy[idx] = 100;
+            } else {
+                occupancy[idx] = static_cast<int8_t>(lround((1 - 1 / (1 + std::exp(log_odds[idx]))) * 100));
+            }
+
+            // assign status
+            if(occupancy[idx] >= 0 && occupancy[idx] <= 30) {
+                occupancy[idx] = 0;
+            } else if(occupancy[idx] >= 80 && occupancy[idx] <= 100){
+                occupancy[idx] = 100;
+            } else {
+                // unknown cells
+                occupancy[idx] = -1;
+            }
+        }  // consider pure ideal cases
+        else {
+            if(occupied) {
+                occupancy[idx] = 100;
+            } else {
+                occupancy[idx] = 0;
+            }
+        }
+    }
+
+
 
     void MapBuilder::tailorSubmap(const iv_slam_ros_msgs::TraversibleArea &traver_map,
                                   iv_slam_ros_msgs::TraversibleArea &tailored_submap) {
@@ -255,7 +384,7 @@ namespace explore_global_map {
         marker.action = visualization_msgs::Marker::ADD;
 
         marker.scale.x = 4.9;
-        marker.scale.y = 2.8;
+        marker.scale.y = 1.95;
         marker.scale.z = 2.0;
         marker.color.a = 0.3;
         marker.color.r = 0.0;

@@ -46,7 +46,7 @@ include_directories(
 )
 
 
-add_executable(${PROJECT_NAME}_node src/explore_map_node.cpp
+add_executable(${PROJECT_NAME}_node src/explore_large_map_node.cpp
         src/map_builder.cpp
         src/rigid_transform.cc
         src/transform.cc)

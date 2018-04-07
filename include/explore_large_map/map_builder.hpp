@@ -6,6 +6,10 @@
 #define EXPLORE_LARGE_MAP_MAP_BUILDER_HPP
 
 #include <chrono>
+#include <cmath> // For std::exp.
+#include <exception>
+#include <string>
+#include <vector>
 
 #include "Eigen/Core"
 #include "Eigen/Dense"
@@ -110,6 +114,9 @@ namespace explore_global_map {
 
         void publishFootPrint(const geometry_msgs::Pose &pose, const std::string &frame);
 
+        void updatePointOccupancy(bool use_bayes, bool occupied, size_t idx, std::vector<int8_t>& occupancy,
+                                              std::vector<double>& log_odds) const;
+
         bool start_flag_;
 
         int tailored_submap_width_;
@@ -134,11 +141,26 @@ namespace explore_global_map {
 
         double border_thickness_;
 
+        // for probability update parameters
+        double p_occupied_when_laser_;  //!< Probability that a point is occupied
+        //!< when the laser ranger says so.
+        //!< Defaults to 0.9.
+        double p_occupied_when_no_laser_ ;  //!< Probability that a point is
+        //!< occupied when the laser ranger
+        //!< says it's free.
+        //!< Defaults to 0.3.
+        double large_log_odds_;  //!< Large log odds used with probability 0 and 1.
+        //!< The greater, the more inertia.
+        //!< Defaults to 100.
+        double max_log_odds_for_belief_;  //!< Max log odds used to compute the
+        //!< belief (exp(max_log_odds_for_belief)
+        //!< should not overflow).
+        //!< Defaults to 20.
 
-
-
+        std::vector<double> log_odds_;  //!< log odds ratios for the binary Bayes filter
+        //!< log_odd = log(p(x) / (1 - p(x)))
 
     };
-}
+} // namespace explore_global_map
 
 #endif //EXPLORE_LARGE_MAP_MAP_BUILDER_HPP

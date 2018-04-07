@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 <arg name="map_resolution" value="0.2"/>
+<arg name="allow_time_transmission_delay_ms_" value="1000"/>
 
 <!-- common param for explore_large_map_pkg -->
 <arg name="local_map_frame_name" value="base_link"/>
@@ -9,7 +10,7 @@
 
 <arg name="traversible_map_topic_name" value="/traversible_area_topic"/>
 <arg name="vehicle_global_position_topic_name" value="/vehicle_global_pose_topic"/>
-<arg name="local_map_topic_name" value="/explore_entry_map"/>
+<arg name="local_map_topic_name" value="/local_map"/>
 <arg name="global_map_topic_name" value="/global_map"/>
 
 <!-- private param for explore_large_map_pkg -->
@@ -20,18 +21,47 @@
 <!-- param for coverage_exploration_pkg -->
 <arg name="send_cover_map_topic_name" value="/cover_map"/>
 
+    <node pkg="coverage_exploration" type="coverage_exploration_node" name="coverage_exploration_node" output="screen" >
+        <param name="recieve_global_map_topic_name" value="$(arg global_map_topic_name)"/>
+        <param name="send_cover_map_topic_name" value="$(arg send_cover_map_topic_name)"/>
+        <param name="global_map_frame_name" value="$(arg global_map_frame_name)" />
+        <param name="local_map_frame_name" value="$(arg local_map_frame_name)" />
+    </node>
+
+    <!--  for vrep
+    <node pkg="global_map" type="global_map" name="global_map_node" output="screen" >
+        <param name="map_width" type="double" value="500"/>
+        <param name="map_height" type="double" value="500" />
+        <param name="map_resolution" type="double" value="0.2" />
+    </node>
+
+    <node pkg="local_map" type="local_map" name="local_map_node" output="screen" >
+            <param name="map_width" type="double" value="300"/>
+            <param name="map_height" type="double" value="300" />
+            <param name="map_resolution" type="double" value="0.2" />
+    </node>
+
+    <node pkg="rviz" type="rviz" name="rviz_explore_map" args="-d $(find explore_large_map)/cfg/vrep_explore_map_viz.rviz"/>
+
+    -->
 
 
+   <!--  for real vehicle -->
     <node pkg="explore_large_map" type="map_entry" name="map_entry_node" output="screen" >
         <param name="map_width" type="double" value="60"/>
         <param name="map_height" type="double" value="60" />
         <param name="base_to_end" type="double" value="30" />
+        <param name="local_map_resolution" type="double" value="$(arg map_resolution)" />
+        <param name="unknown_cell_value_for_local_map" value="0" />
+        <param name="allow_time_transmission_delay_ms_" value="$(arg allow_time_transmission_delay_ms_)" />
+
         <param name="local_map_frame_name" value="$(arg local_map_frame_name)" />
         <param name="local_map_topic_name" value="$(arg local_map_topic_name)" />
         <param name="traversible_map_topic_name" value="$(arg traversible_map_topic_name)" />
         <param name="vehicle_global_position_topic_name" value="$(arg vehicle_global_position_topic_name)" />
 
     </node>
+
 
     <node pkg="explore_large_map" type="explore_large_map_node" name="explore_large_map_node" output="screen" >
         <param name="map_width" type="double" value="100"/>
@@ -53,16 +83,10 @@
 
     </node>
 
-
-
-    <node pkg="coverage_exploration" type="coverage_exploration_node" name="coverage_exploration_node" output="screen" >
-        <param name="recieve_global_map_topic_name" value="$(arg global_map_topic_name)"/>
-        <param name="send_cover_map_topic_name" value="$(arg send_cover_map_topic_name)"/>
-        <param name="global_map_frame_name" value="$(arg global_map_frame_name)" />
-        <param name="local_map_frame_name" value="$(arg local_map_frame_name)" />
-    </node>
-
-
     <node pkg="rviz" type="rviz" name="rviz_explore_map" args="-d $(find explore_large_map)/cfg/explore_map_viz.rviz"/>
+
+
+
+
 
 </launch>

@@ -27,7 +27,7 @@ using namespace cv;
 
     nav_msgs::Odometry received_tem_global_vehicle_pose;
     iv_slam_ros_msgs::TraversibleArea TwiDTraversibleArea;
-
+    double allow_time_delay = 1000;
     bool receive_vehicle_pose = false, receive_traversible_map = false;
     ros::WallTime last_receive_map_timestamp_for_map_entry;
     ros::WallTime last_receive_position_timestamp_for_map_entry;
@@ -146,13 +146,13 @@ using namespace cv;
         ros::WallTime end = ros::WallTime::now();
         double map_elapse_time = (end - last_receive_map_timestamp_for_map_entry).toSec() * 1000;
         double position_elapse_time = (end - last_receive_position_timestamp_for_map_entry).toSec() * 1000;
-        if (map_elapse_time < 1000) {
+        if (map_elapse_time < allow_time_delay) {
             receive_traversible_map = true;
         } else {
             receive_traversible_map = false;
             ROS_ERROR("Receive traverible map delay exceed time!");
         }
-        if (position_elapse_time < 1000) {
+        if (position_elapse_time < allow_time_delay) {
             receive_vehicle_pose = true;
         } else {
             receive_vehicle_pose = false;
@@ -180,7 +180,10 @@ int main(int argc, char **argv) {
     nh.param<double>("map_height", map_height, 60);
     nh.param<double>("base_to_end", base_to_end, 20);
     nh.param<double>("local_map_resolution", map_resolution, 0.2);
-    nh.param<int>("unknown_cell_value", unknown_cell_value, -1);
+    nh.param<double>("local_map_resolution", map_resolution, 0.2);
+    nh.param<double>("allow_time_transmission_delay_ms_", allow_time_delay, 1000);
+    // local map only two states: free or occupied
+    nh.param<int>("unknown_cell_value_for_local_map", unknown_cell_value, 0);
     nh.param<std::string>("local_map_frame_name", local_map_frame_name, "base_link");
     nh.param<std::string>("local_map_topic_name", local_map_topic_name, "/explore_entry_map");
     nh.param<std::string>("traversible_map_topic_name", traversible_map_topic_name, "/traversible_area_topic");
@@ -378,12 +381,12 @@ int main(int argc, char **argv) {
         marker.type = visualization_msgs::Marker::CUBE;
         marker.action = visualization_msgs::Marker::ADD;
         marker.scale.x = 4.9;
-        marker.scale.y = 2.8;
+        marker.scale.y = 1.95;
         marker.scale.z = 2.0;
         marker.color.a = 0.3;
-        marker.color.r = 1.0;
+        marker.color.r = 0.0;
         marker.color.g = 0.0;
-        marker.color.b = 0.0;
+        marker.color.b = 1.0;
         marker.frame_locked = true;
         marker.pose.position.x = 0;
         marker.pose.position.y = 0;
