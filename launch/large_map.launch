@@ -26,9 +26,18 @@
         <param name="send_cover_map_topic_name" value="$(arg send_cover_map_topic_name)"/>
         <param name="global_map_frame_name" value="$(arg global_map_frame_name)" />
         <param name="local_map_frame_name" value="$(arg local_map_frame_name)" />
+        <param name="vehicle_length" value="4.9"/>
+        <param name="vehicle_width" value="1.95"/>
+        <param name="base2back" value="1.0"/>
+        <param name="polygon_height" value="20"/>
+        <param name="polygon_base_length" value="16.8"/>
+        <param name="base2camera_length" value="1.5"/>
+        <param name="left_base2camera_length" value="0.9"/>
+        <param name="obs_threshold_" value="80"/>
+        <param name="border_thickness" value="2"/>
     </node>
 
-    <!--  for vrep
+    <!--  for vrep  -->
     <node pkg="global_map" type="global_map" name="global_map_node" output="screen" >
         <param name="map_width" type="double" value="500"/>
         <param name="map_height" type="double" value="500" />
@@ -43,10 +52,10 @@
 
     <node pkg="rviz" type="rviz" name="rviz_explore_map" args="-d $(find explore_large_map)/cfg/vrep_explore_map_viz.rviz"/>
 
-    -->
 
 
-   <!--  for real vehicle -->
+
+   <!--  for real vehicle
     <node pkg="explore_large_map" type="map_entry" name="map_entry_node" output="screen" >
         <param name="map_width" type="double" value="60"/>
         <param name="map_height" type="double" value="60" />
@@ -84,7 +93,7 @@
     </node>
 
     <node pkg="rviz" type="rviz" name="rviz_explore_map" args="-d $(find explore_large_map)/cfg/explore_map_viz.rviz"/>
-
+   -->
 
 
 

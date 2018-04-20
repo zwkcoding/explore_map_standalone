@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
 
     ros::Subscriber local_map_sub = n.subscribe(re_local_map_topic_name, 1, localMapCall);
     ros::Subscriber vehicle_global_pose_sub = n.subscribe(re_vehicle_global_position_topic_name,1,vehiclePoseCallback);
-    ros::Subscriber goal_pose_sub = n.subscribe(re_goal_pose_topic_name,1,goalPoseCallback);
+//    ros::Subscriber goal_pose_sub = n.subscribe(re_goal_pose_topic_name,1,goalPoseCallback);
     ros::Publisher map_publisher = n.advertise<nav_msgs::OccupancyGrid>(se_global_map_topic_name, 1, false);
     ros::Publisher current_position_in_explore_map_pub = n.advertise<nav_msgs::Odometry>(se_vehicle_pose_in_odom_topic_name, 1, false);
     ros::Publisher local_goal_pub = n.advertise<geometry_msgs::PoseStamped>(se_local_goal_topic_name, 1, false);
@@ -191,15 +191,16 @@ int main(int argc, char **argv) {
         current_position_in_explore_map_pub.publish(odom_global_vehicle_pose);
 
 
-        // reset goal flag and no publisher, waiting new goal pose input
+       /* // reset goal flag and no publisher, waiting new goal pose input
         if(std::hypot(global_goal_pose.pose.position.x - odom_global_vehicle_pose.pose.pose.position.x,
                       global_goal_pose.pose.position.y - odom_global_vehicle_pose.pose.pose.position.y) < reach_goal_distance) {
             goal_flag = false;
         }
+
         if(goal_flag) {
             global2Vehicle(tf_listener, global_goal_pose, local_goal_pose); // update local goal pose
             local_goal_pub.publish(local_goal_pose);
-        }
+        }*/
 
         ros::spinOnce();
         rate.sleep();
