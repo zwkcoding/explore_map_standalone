@@ -33,7 +33,7 @@ Visualization Manager:
       Cell Size: 0.200000003
       Class: rviz/Grid
       Color: 160; 160; 164
-      Enabled: true
+      Enabled: false
       Line Style:
         Line Width: 0.0299999993
         Value: Lines
@@ -46,17 +46,17 @@ Visualization Manager:
       Plane: XY
       Plane Cell Count: 500
       Reference Frame: <Fixed Frame>
-      Value: true
+      Value: false
     - Alpha: 0.699999988
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: false
+      Enabled: true
       Name: Map
       Topic: /global_map
       Unreliable: false
       Use Timestamp: false
-      Value: false
+      Value: true
     - Alpha: 0.699999988
       Class: rviz/Map
       Color Scheme: map
@@ -229,11 +229,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 20.5046921
+      Scale: 7.63982201
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: -7.47699118
-      Y: -22.0517483
+      X: -17.5460777
+      Y: -10.4592047
     Saved: ~
 Window Geometry:
   Displays:
@@ -251,5 +251,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1867
-  X: 160
-  Y: 75
+  X: 53
+  Y: 24

@@ -19,7 +19,7 @@
     <depend>nav_msgs</depend>
     <depend>tf</depend>
     <depend>visualization_msgs</depend>
-
+    <depend>map_ray_caster</depend>
 
 
 </package>

@@ -13,6 +13,7 @@
 #include "Eigen/Geometry"
 #include "explore_large_map/transform.h"
 #include <visualization_msgs/MarkerArray.h>
+#include <map_ray_caster/map_ray_caster.h>
 
 #include <chrono>
 #include <opencv2/opencv.hpp>  // A simple CHEAT cause it includes everything
@@ -21,6 +22,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 
 #define PRE_DILATE
+#define RAY_TRACE
 
 using namespace cv;
 
@@ -106,8 +108,10 @@ using namespace cv;
             m0.setTo(Scalar(255), m == 2);
 //        imshow("source",m0);
 
-/*
+
         int dilation_type;
+        int dilation_elem = 0;
+        int dilation_size = 2;   // standrand value is 1
         if( dilation_elem == 0 ){ dilation_type = MORPH_RECT; }
         else if( dilation_elem == 1 ){ dilation_type = MORPH_CROSS; }
         else if( dilation_elem == 2) { dilation_type = MORPH_ELLIPSE; }
@@ -116,10 +120,10 @@ using namespace cv;
                                              Size( 2*dilation_size + 1, 2*dilation_size+1 ),
                                              Point( dilation_size, dilation_size ) );
         /// Apply the dilation operation
-        dilate( src, dilation_dst, element );
-*/
+        dilate( m0, m0, element );
 
-            dilate(m0, m0, Mat(), Point(-1, -1), 1, 1, 1);
+
+//            dilate(m0, m0, Mat(), Point(-1, -1), 1, 1, 1);
 //        imshow("dilate",m0);
 
             for (int i = 0; i < m0.rows; ++i) {
@@ -183,7 +187,7 @@ int main(int argc, char **argv) {
     nh.param<double>("local_map_resolution", map_resolution, 0.2);
     nh.param<double>("allow_time_transmission_delay_ms_", allow_time_delay, 1000);
     // local map only two states: free or occupied
-    nh.param<int>("unknown_cell_value_for_local_map", unknown_cell_value, 0);
+    nh.param<int>("unknown_cell_value_for_local_map", unknown_cell_value, -1);
     nh.param<std::string>("local_map_frame_name", local_map_frame_name, "base_link");
     nh.param<std::string>("local_map_topic_name", local_map_topic_name, "/explore_entry_map");
     nh.param<std::string>("traversible_map_topic_name", traversible_map_topic_name, "/traversible_area_topic");
@@ -211,6 +215,16 @@ int main(int argc, char **argv) {
     cartographer::transform::GridZone zone = cartographer::transform::UTM_ZONE_51;
     cartographer::transform::Hemisphere hemi = cartographer::transform::HEMI_NORTH;
 
+
+    map_ray_caster::MapRayCaster ray_caster_;  //!< Ray casting with cache.
+    // Fill in the lookup cache.
+    const double angle_start = -M_PI;
+    const double angle_end = angle_start + 2 * M_PI - 1e-6;
+    const double angle_resolution_= M_PI / 1440;
+    for (double a = angle_start; a <= angle_end; a += angle_resolution_)
+    {
+        ray_caster_.getRayCastToMapBorder(a, local_map.info.height, local_map.info.width, 0.9 * angle_resolution_);
+    }
 
     ros::Rate rate(100);
     while (ros::ok()) {
@@ -370,8 +384,94 @@ int main(int argc, char **argv) {
         cvReleaseImage(&testimage);
         cvReleaseImage(&showimage);
 
-        map_publisher.publish(local_map);
 
+#ifdef RAY_TRACE
+
+        Mat m = Mat(local_map.info.height, local_map.info.width, CV_8UC3, Scalar(0, 0, 255));
+        Mat m0 = Mat(local_map.info.height, local_map.info.width, CV_8UC3, Scalar(255, 255, 255));
+
+        RNG G_RNG(1234);
+        Scalar color = Scalar(G_RNG.uniform(0, 255), G_RNG.uniform(0, 255), G_RNG.uniform(0, 255));
+
+        for (double a = angle_start; a <= angle_end; a += angle_resolution_)
+        {
+            const std::vector<size_t>& ray_to_map_border = ray_caster_.getRayCastToMapBorder(a, local_map.info.height,
+                                                                                             local_map.info.width, 1.1 * angle_resolution_);
+            int count = 0;
+            for(auto &value: ray_to_map_border) {
+                int canvasX = value % local_map.info.width;
+                int canvasY = value / local_map.info.width;
+                if(100 == local_map.data[value]) {
+                    m.at<Vec3b>(canvasY, canvasX)[0] = 0;
+                    m.at<Vec3b>(canvasY, canvasX)[1] = 0;
+                    m.at<Vec3b>(canvasY, canvasX)[2] = 0;
+
+                    line(m0, cv::Point(150, 150), cv::Point(canvasX, canvasY), color, 1, 8);
+                    Point2f pt;
+                    pt.x = canvasX;
+                    pt.y = canvasY;
+                    circle(m0, pt, 5, Scalar(0, 0, 255), -1, 8, 0);
+
+                    break;
+                } else {
+                    // degrade to single line lidar
+                    local_map.data[value] = 0;
+                    m.at<Vec3b>(canvasY, canvasX)[0] = 255;
+                    m.at<Vec3b>(canvasY, canvasX)[1] = 255;
+                    m.at<Vec3b>(canvasY, canvasX)[2] = 255;
+                    count++;
+                }
+            }
+
+
+            for(int i = count + 1; i < ray_to_map_border.size(); i++) {
+                int canvasX = ray_to_map_border[i] % local_map.info.width;
+                int canvasY = ray_to_map_border[i] / local_map.info.width;
+                if(100 == local_map.data[ray_to_map_border[i]]) {
+                    local_map.data[ray_to_map_border[i]] = 100;
+
+                    m.at<Vec3b>(canvasY, canvasX)[0] = 0;
+                    m.at<Vec3b>(canvasY, canvasX)[1] = 0;
+                    m.at<Vec3b>(canvasY, canvasX)[2] = 0;
+
+                } else {
+                    local_map.data[ray_to_map_border[i]] = -1;
+
+                    m.at<Vec3b>(canvasY, canvasX)[0] = 0;
+                    m.at<Vec3b>(canvasY, canvasX)[1] = 0;
+                    m.at<Vec3b>(canvasY, canvasX)[2] = 255;
+                    count++;
+                }
+            }
+        }
+
+        flip(m, m, 0);
+        flip(m0, m0, 0);
+        namedWindow("ray--", 0);
+        namedWindow("ray", 0);
+        cv::imshow("ray", m);
+        cv::imshow("ray--", m0);
+//        moveWindow("ray", 550, 20);
+//        moveWindow("ray--", 1100, 20);
+        cv::waitKey(1);
+
+        cv::Mat m1 = cv::Mat(local_map.info.height, local_map.info.width,
+                            CV_8SC1); // initialize matrix of signed char of 1-channel where you will store vec data
+        cv::Mat m2 = cv::Mat(local_map.info.height, local_map.info.width,
+                             CV_8UC1);
+        //copy vector to mat
+        memcpy(m1.data, local_map.data.data(), local_map.data.size() * sizeof(signed char));
+//        m.setTo(cv::Scalar(120), m == -1);
+        m1.convertTo(m2, CV_8UC1);
+        flip(m2, m2, 0);
+        namedWindow("source", 0);
+        cv::imshow("source", m2);
+        cv::waitKey(1);
+
+
+#endif
+
+        map_publisher.publish(local_map);
         // displayFootprint
         visualization_msgs::Marker marker;
         marker.header.frame_id = local_map_frame_name;

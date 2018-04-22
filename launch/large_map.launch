@@ -37,7 +37,7 @@
         <param name="border_thickness" value="2"/>
     </node>
 
-    <!--  for vrep  -->
+    <!--  for vrep
     <node pkg="global_map" type="global_map" name="global_map_node" output="screen" >
         <param name="map_width" type="double" value="500"/>
         <param name="map_height" type="double" value="500" />
@@ -51,17 +51,16 @@
     </node>
 
     <node pkg="rviz" type="rviz" name="rviz_explore_map" args="-d $(find explore_large_map)/cfg/vrep_explore_map_viz.rviz"/>
+    -->
 
 
 
-
-   <!--  for real vehicle
+   <!--  for real vehicle -->
     <node pkg="explore_large_map" type="map_entry" name="map_entry_node" output="screen" >
         <param name="map_width" type="double" value="60"/>
         <param name="map_height" type="double" value="60" />
         <param name="base_to_end" type="double" value="30" />
         <param name="local_map_resolution" type="double" value="$(arg map_resolution)" />
-        <param name="unknown_cell_value_for_local_map" value="0" />
         <param name="allow_time_transmission_delay_ms_" value="$(arg allow_time_transmission_delay_ms_)" />
 
         <param name="local_map_frame_name" value="$(arg local_map_frame_name)" />
@@ -93,7 +92,7 @@
     </node>
 
     <node pkg="rviz" type="rviz" name="rviz_explore_map" args="-d $(find explore_large_map)/cfg/explore_map_viz.rviz"/>
-   -->
+
 
 
 

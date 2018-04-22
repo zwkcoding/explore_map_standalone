@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
         tf
         visualization_msgs
         iv_slam_ros_msgs
+        map_ray_caster
         )
 
 find_package(OpenCV REQUIRED)
